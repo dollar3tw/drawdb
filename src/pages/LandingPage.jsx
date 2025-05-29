@@ -95,7 +95,7 @@ export default function LandingPage() {
           <div className="hidden md:block h-full bg-dots" />
           <div className="absolute left-12 w-[45%] top-[50%] translate-y-[-54%] md:left-[50%] md:translate-x-[-50%] p-8 md:p-3 md:w-full text-zinc-800">
             <FadeIn duration={0.75}>
-              <h2 className="text-2xl mt-1 font-medium text-center mb-6">Your Saved Diagrams</h2>
+              <h2 className="text-2xl mt-1 font-medium text-center mb-6">已儲存的圖表</h2>
               {isLoading && <p className="text-center">Loading diagrams...</p>}
               {error && <p className="text-center text-red-500">{error}</p>}
               {!isLoading && !error && diagrams.length === 0 && (
@@ -127,7 +127,7 @@ export default function LandingPage() {
                 to="/editor"
                 className="inline-block py-3 text-white transition-all duration-300 rounded-full shadow-lg bg-sky-900 ps-7 pe-6 hover:bg-sky-800"
               >
-                Try it for yourself <i className="bi bi-arrow-right ms-1"></i>
+                新增圖表 <i className="bi bi-arrow-right ms-1"></i>
               </Link>
             </div>
           </div>
