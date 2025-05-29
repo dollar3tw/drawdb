@@ -1,0 +1,70 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 前端架構指南
+
+## 應用程式結構
+
+### 路由系統
+主要路由定義在 [src/App.jsx](mdc:src/App.jsx) 中：
+- `/` - 首頁 ([src/pages/LandingPage.jsx](mdc:src/pages/LandingPage.jsx))
+- `/editor` - 主編輯器 ([src/pages/Editor.jsx](mdc:src/pages/Editor.jsx))
+- `/templates` - 模板頁面 ([src/pages/Templates.jsx](mdc:src/pages/Templates.jsx))
+- `/bug-report` - 錯誤回報 ([src/pages/BugReport.jsx](mdc:src/pages/BugReport.jsx))
+
+### 元件組織
+
+#### 核心元件目錄 [src/components/](mdc:src/components/)
+- **Workspace.jsx** - 主工作區元件
+- **Navbar.jsx** - 導航列
+- **SimpleCanvas.jsx** - 簡化畫布
+- **Thumbnail.jsx** - 縮圖元件
+- **FloatingControls.jsx** - 浮動控制項
+
+#### 編輯器相關元件
+- [src/components/EditorHeader/](mdc:src/components/EditorHeader/) - 編輯器標題列
+- [src/components/EditorSidePanel/](mdc:src/components/EditorSidePanel/) - 側邊面板
+- [src/components/EditorCanvas/](mdc:src/components/EditorCanvas/) - 編輯器畫布
+- [src/components/CodeEditor/](mdc:src/components/CodeEditor/) - 程式碼編輯器
+- [src/components/LexicalEditor/](mdc:src/components/LexicalEditor/) - 富文本編輯器
+
+#### 其他元件
+- [src/components/SortableList/](mdc:src/components/SortableList/) - 可排序列表
+
+### 狀態管理 [src/context/](mdc:src/context/)
+
+#### 核心 Context
+- **SettingsContext.jsx** - 應用程式設定
+- **DiagramContext.jsx** - 圖表狀態管理
+- **CanvasContext.jsx** - 畫布狀態
+- **SelectContext.jsx** - 選擇狀態
+
+#### 資料 Context
+- **TypesContext.jsx** - 資料類型管理
+- **EnumsContext.jsx** - 枚舉管理
+- **NotesContext.jsx** - 註釋管理
+- **AreasContext.jsx** - 區域管理
+
+#### 功能 Context
+- **UndoRedoContext.jsx** - 撤銷/重做功能
+- **TransformContext.jsx** - 變換操作
+- **TasksContext.jsx** - 任務管理
+- **LayoutContext.jsx** - 佈局管理
+- **SaveStateContext.jsx** - 儲存狀態
+
+### 工具函數 [src/utils/](mdc:src/utils/)
+包含各種工具函數和輔助方法
+
+### 自定義 Hooks [src/hooks/](mdc:src/hooks/)
+包含可重用的 React hooks
+
+### 國際化 [src/i18n/](mdc:src/i18n/)
+多語言支援相關檔案
+
+### 靜態資源
+- [src/assets/](mdc:src/assets/) - 圖片和其他資源
+- [src/icons/](mdc:src/icons/) - 圖示檔案
+- [src/animations/](mdc:src/animations/) - 動畫相關
+- [src/templates/](mdc:src/templates/) - 模板檔案

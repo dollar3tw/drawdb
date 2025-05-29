@@ -1,0 +1,184 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 功能模組指南
+
+## 核心功能模組
+
+### 圖表編輯器
+主要元件位於 [src/components/EditorCanvas/](mdc:src/components/EditorCanvas/)
+
+#### 核心功能
+- 拖拽式資料表設計
+- 關聯線繪製和編輯
+- 視覺化資料庫結構
+- 即時預覽和編輯
+
+#### 相關 Context
+- [src/context/DiagramContext.jsx](mdc:src/context/DiagramContext.jsx) - 圖表狀態管理
+- [src/context/CanvasContext.jsx](mdc:src/context/CanvasContext.jsx) - 畫布操作
+- [src/context/SelectContext.jsx](mdc:src/context/SelectContext.jsx) - 選擇狀態
+
+### 程式碼編輯器
+使用 Monaco Editor，位於 [src/components/CodeEditor/](mdc:src/components/CodeEditor/)
+
+#### 功能特色
+- SQL 語法高亮
+- 自動完成
+- 錯誤檢測
+- 多種資料庫方言支援
+
+### 富文本編輯器
+使用 Lexical，位於 [src/components/LexicalEditor/](mdc:src/components/LexicalEditor/)
+
+#### 應用場景
+- 註釋編輯
+- 文件說明
+- 標籤和描述
+
+### 資料類型管理
+相關檔案：
+- [src/context/TypesContext.jsx](mdc:src/context/TypesContext.jsx)
+- [src/context/EnumsContext.jsx](mdc:src/context/EnumsContext.jsx)
+
+#### 支援的資料庫
+- MySQL
+- PostgreSQL
+- SQLite
+- SQL Server
+- Oracle
+- MariaDB
+
+### 匯入/匯出功能
+
+#### 支援格式
+- **匯入**: SQL 檔案、JSON 格式
+- **匯出**: SQL 腳本、PNG 圖片、PDF 文件、JSON 格式
+
+#### 相關工具庫
+- `file-saver` - 檔案下載
+- `html-to-image` - 圖片生成
+- `jspdf` - PDF 生成
+- `jszip` - 壓縮檔案
+
+### 模板系統
+模板頁面：[src/pages/Templates.jsx](mdc:src/pages/Templates.jsx)
+模板檔案：[src/templates/](mdc:src/templates/)
+
+#### 功能
+- 預設資料庫模板
+- 快速開始範例
+- 常見設計模式
+
+### 協作分享（需要後端）
+API 相關：[src/api/](mdc:src/api/)
+
+#### 功能
+- 圖表分享連結
+- 即時協作編輯
+- 版本控制
+- 存取權限管理
+
+## 輔助功能模組
+
+### 撤銷/重做系統
+實作於：[src/context/UndoRedoContext.jsx](mdc:src/context/UndoRedoContext.jsx)
+
+#### 功能
+- 操作歷史記錄
+- 狀態快照管理
+- 鍵盤快捷鍵支援
+
+### 變換操作
+實作於：[src/context/TransformContext.jsx](mdc:src/context/TransformContext.jsx)
+
+#### 功能
+- 縮放控制
+- 平移操作
+- 視窗適配
+
+### 佈局管理
+實作於：[src/context/LayoutContext.jsx](mdc:src/context/LayoutContext.jsx)
+
+#### 功能
+- 自動佈局算法
+- 元件對齊
+- 間距調整
+
+### 區域管理
+實作於：[src/context/AreasContext.jsx](mdc:src/context/AreasContext.jsx)
+
+#### 功能
+- 邏輯分組
+- 視覺化區域
+- 顏色標記
+
+### 註釋系統
+實作於：[src/context/NotesContext.jsx](mdc:src/context/NotesContext.jsx)
+
+#### 功能
+- 文字註釋
+- 圖形標註
+- 說明文件
+
+## 使用者介面模組
+
+### 導航系統
+- [src/components/Navbar.jsx](mdc:src/components/Navbar.jsx) - 主導航
+- [src/components/EditorHeader/](mdc:src/components/EditorHeader/) - 編輯器標題列
+
+### 側邊面板
+位於：[src/components/EditorSidePanel/](mdc:src/components/EditorSidePanel/)
+
+#### 功能面板
+- 資料表列表
+- 屬性編輯器
+- 圖層管理
+- 設定選項
+
+### 浮動控制項
+實作於：[src/components/FloatingControls.jsx](mdc:src/components/FloatingControls.jsx)
+
+#### 功能
+- 縮放控制
+- 視圖切換
+- 快速操作
+
+### 工作區
+主要元件：[src/components/Workspace.jsx](mdc:src/components/Workspace.jsx)
+
+#### 整合功能
+- 畫布管理
+- 工具列
+- 狀態顯示
+- 快捷鍵處理
+
+## 資料持久化
+
+### 本地儲存
+使用 Dexie.js 管理 IndexedDB
+
+#### 儲存內容
+- 圖表資料
+- 使用者設定
+- 操作歷史
+- 暫存資料
+
+### 設定管理
+實作於：[src/context/SettingsContext.jsx](mdc:src/context/SettingsContext.jsx)
+
+#### 設定項目
+- 主題模式（明亮/暗黑）
+- 語言偏好
+- 編輯器設定
+- 顯示選項
+
+### 儲存狀態
+實作於：[src/context/SaveStateContext.jsx](mdc:src/context/SaveStateContext.jsx)
+
+#### 功能
+- 自動儲存
+- 變更追蹤
+- 儲存狀態指示

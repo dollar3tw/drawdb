@@ -1,0 +1,120 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 後端整合指南
+
+## 後端架構
+
+### 後端目錄結構 [backend/](mdc:backend/)
+- **server.js** - Express 伺服器主檔案
+- **package.json** - 後端依賴管理
+- [backend/routes/](mdc:backend/routes/) - API 路由定義
+- [backend/database/](mdc:backend/database/) - 資料庫相關檔案
+- **drawdb.sqlite** - SQLite 資料庫檔案
+
+### 資料庫
+- 使用 SQLite 作為主要資料庫
+- 資料庫檔案: `drawdb.sqlite`
+- WAL 模式檔案: `drawdb.sqlite-wal`, `drawdb.sqlite-shm`
+
+## 前後端通訊
+
+### API 整合
+- 前端使用 Axios 進行 HTTP 請求
+- API 相關程式碼位於 [src/api/](mdc:src/api/) 目錄
+- 支援檔案分享和協作功能
+
+### 環境配置
+- 開發環境可以獨立運行前端（無需後端）
+- 生產環境需要配置後端服務以支援分享功能
+- 環境變數配置參考 `.env.sample`
+
+### 分享功能
+- 需要後端支援的功能：
+  - 圖表分享
+  - 協作編輯
+  - 雲端儲存
+
+## 部署選項
+
+### 純前端部署
+- 適用於個人使用或不需要分享功能的場景
+- 可部署到靜態網站託管服務
+- 資料儲存在瀏覽器本地
+
+### 全棧部署
+- 包含前端和後端
+- 支援完整的分享和協作功能
+- 可使用 Docker 進行容器化部署
+
+### Docker 部署
+使用 [Dockerfile](mdc:Dockerfile) 和 [compose.yml](mdc:compose.yml)：
+
+```bash
+# 建置 Docker 映像
+docker build -t drawdb .
+
+# 運行容器
+docker run -p 3000:80 drawdb
+
+# 或使用 Docker Compose
+docker-compose up
+```
+
+## 開發模式
+
+### 前端獨立開發
+```bash
+npm run dev
+```
+- 前端運行在 http://localhost:5173
+- 不依賴後端服務
+- 適合 UI/UX 開發和功能測試
+
+### 全棧開發
+1. 啟動後端服務：
+```bash
+cd backend
+npm install
+npm start
+```
+
+2. 啟動前端開發伺服器：
+```bash
+npm run dev
+```
+
+### 生產建置
+```bash
+npm run build
+```
+- 建置結果輸出到 `dist/` 目錄
+- 可直接部署到 Web 伺服器
+
+## 資料流程
+
+### 本地資料
+- 使用 Dexie.js 管理 IndexedDB
+- 圖表資料儲存在瀏覽器本地
+- 支援匯入/匯出功能
+
+### 雲端資料（需要後端）
+- 透過 API 與後端通訊
+- 支援圖表分享和協作
+- 資料同步和版本控制
+
+## API 端點（後端服務）
+
+### 檔案操作
+- 上傳圖表檔案
+- 下載分享的圖表
+- 檔案權限管理
+
+### 分享功能
+- 生成分享連結
+- 存取權限控制
+- 協作編輯支援
+
+參考後端專案 [drawdb-server](https://github.com/drawdb-io/drawdb-server) 獲取完整的 API 文件。

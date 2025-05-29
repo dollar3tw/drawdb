@@ -1,0 +1,97 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 開發指南
+
+## 編碼標準
+
+### React 元件規範
+1. **函數式元件**: 使用函數式元件和 React Hooks
+2. **檔案命名**: 使用 PascalCase 命名元件檔案 (例如: `EditorHeader.jsx`)
+3. **匯出方式**: 優先使用 default export
+4. **Props 解構**: 在函數參數中解構 props
+
+### 狀態管理模式
+- 使用 React Context API 進行全域狀態管理
+- 每個 Context 應該有明確的職責範圍
+- Context 檔案位於 [src/context/](mdc:src/context/) 目錄
+- 使用自定義 hooks 封裝 Context 邏輯
+
+### 樣式指南
+- **主要樣式系統**: Tailwind CSS
+- **元件庫**: Semi UI (@douyinfe/semi-ui)
+- **動畫**: Framer Motion
+- **CSS 檔案**: [src/index.css](mdc:src/index.css) 包含全域樣式
+
+### 程式碼品質
+- **Linting**: 使用 ESLint 配置 ([.eslintrc.cjs](mdc:.eslintrc.cjs))
+- **格式化**: 使用 Prettier 配置 ([.prettierrc.json](mdc:.prettierrc.json))
+- **型別檢查**: 雖然使用 JavaScript，但有 TypeScript 型別定義
+
+## 專案特定模式
+
+### Context 使用模式
+```javascript
+// Context 定義範例
+const MyContext = createContext();
+
+export function MyContextProvider({ children }) {
+  const [state, setState] = useState(initialState);
+  return (
+    <MyContext.Provider value={{ state, setState }}>
+      {children}
+    </MyContext.Provider>
+  );
+}
+
+// 自定義 hook
+export function useMyContext() {
+  const context = useContext(MyContext);
+  if (!context) {
+    throw new Error('useMyContext must be used within MyContextProvider');
+  }
+  return context;
+}
+```
+
+### 元件結構模式
+- 將複雜元件拆分為子目錄
+- 例如: [src/components/EditorHeader/](mdc:src/components/EditorHeader/) 包含相關的子元件
+
+### 資料處理
+- 使用 Dexie.js 進行本地資料庫操作
+- API 呼叫使用 Axios
+- 檔案處理使用 file-saver 和 jszip
+
+## 開發工作流程
+
+### 本地開發
+1. 執行 `npm run dev` 啟動開發伺服器
+2. 預設運行在 http://localhost:5173 (如果埠被佔用會自動選擇其他埠)
+3. 支援熱重載 (HMR)
+
+### 建置部署
+1. 執行 `npm run build` 建置生產版本
+2. 執行 `npm run preview` 預覽建置結果
+3. 支援 Docker 部署 ([Dockerfile](mdc:Dockerfile))
+
+### 程式碼檢查
+- 執行 `npm run lint` 進行 ESLint 檢查
+- 確保程式碼符合專案標準
+
+## 依賴管理
+
+### 核心依賴
+- **React 生態**: react, react-dom, react-router-dom
+- **建置工具**: vite, @vitejs/plugin-react
+- **UI 框架**: @douyinfe/semi-ui, tailwindcss
+- **編輯器**: @monaco-editor/react, @lexical/react
+- **工具庫**: axios, dexie, framer-motion
+
+### 開發依賴
+- **程式碼品質**: eslint, prettier
+- **型別支援**: @types/react, @types/react-dom
+
+參考 [package.json](mdc:package.json) 獲取完整的依賴列表。

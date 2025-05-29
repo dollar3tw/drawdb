@@ -1,0 +1,45 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# DrawDB 專案概覽
+
+DrawDB 是一個強大且用戶友好的資料庫實體關係圖（ER）編輯器，直接在瀏覽器中運行。這是一個基於 React + Vite 的前端應用程式，具有可選的後端支援。
+
+## 專案結構
+
+### 前端架構
+- **框架**: React 18 + Vite
+- **樣式**: Tailwind CSS + Semi UI 元件庫
+- **路由**: React Router DOM
+- **狀態管理**: React Context API
+- **動畫**: Framer Motion
+- **編輯器**: Monaco Editor (程式碼編輯) + Lexical (富文本編輯)
+
+### 主要目錄
+- [src/](mdc:src/) - 前端原始碼
+- [backend/](mdc:backend/) - 後端 Node.js 服務
+- [public/](mdc:public/) - 靜態資源
+
+### 核心檔案
+- [src/App.jsx](mdc:src/App.jsx) - 應用程式主入口
+- [src/main.jsx](mdc:src/main.jsx) - React 應用程式掛載點
+- [package.json](mdc:package.json) - 專案依賴和腳本
+- [vite.config.js](mdc:vite.config.js) - Vite 建置配置
+- [tailwind.config.js](mdc:tailwind.config.js) - Tailwind CSS 配置
+
+## 主要功能
+1. 視覺化資料庫設計
+2. SQL 腳本生成
+3. 多種資料庫支援
+4. 匯入/匯出功能
+5. 協作分享（需要後端）
+6. 模板系統
+7. 多語言支援
+
+## 開發指令
+- `npm run dev` - 啟動開發伺服器
+- `npm run build` - 建置生產版本
+- `npm run lint` - 執行 ESLint 檢查
+- `npm run preview` - 預覽建置結果
