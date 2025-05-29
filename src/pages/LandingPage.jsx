@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
 import SimpleCanvas from "../components/SimpleCanvas";
 import Navbar from "../components/Navbar";
 import { diagram } from "../data/heroDiagram";
@@ -15,6 +15,7 @@ import warp from "../assets/warp.png";
 import screenshot from "../assets/screenshot.png";
 import FadeIn from "../animations/FadeIn";
 import axios from "axios";
+import { getAllDiagramsAPI } from "../data/db"; // Fixed import path
 import { languages } from "../i18n/i18n";
 import { Tweet } from "react-tweet";
 import { socials } from "../data/socials";
@@ -28,12 +29,45 @@ function shortenNumber(number) {
 
 export default function LandingPage() {
   const [stats, setStats] = useState({ stars: 18000, forks: 1200 });
+  const [diagrams, setDiagrams] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate(); // Initialize useNavigate
+
+  const handleDiagramClick = (diagramId) => {
+    if (diagramId) {
+      window.name = `d ${diagramId}`; // Set window.name to indicate which diagram to load
+      navigate("/editor");          // Navigate to the editor page
+    } else {
+      console.error("Diagram ID is undefined. Cannot navigate.");
+      // Optionally, show an error to the user via Toast or similar
+    }
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
-      await axios
-        .get("https://api.github-star-counter.workers.dev/user/drawdb-io")
-        .then((res) => setStats(res.data));
+      try {
+        const res = await axios.get("https://api.github-star-counter.workers.dev/user/drawdb-io");
+        setStats(res.data);
+      } catch (err) {
+        console.error("Error fetching GitHub stats:", err);
+        // Keep default stats or set to a specific error state if needed
+      }
+    };
+
+    const fetchDiagrams = async () => {
+      try {
+        setIsLoading(true);
+        const fetchedDiagrams = await getAllDiagramsAPI();
+        setDiagrams(fetchedDiagrams || []); // Ensure diagrams is always an array
+        setError(null); // Clear any previous error
+      } catch (err) {
+        console.error("Error fetching diagrams:", err);
+        setError("Failed to load diagrams. Please try again later.");
+        setDiagrams([]); // Clear diagrams on error
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     document.body.setAttribute("theme-mode", "light");
@@ -41,6 +75,7 @@ export default function LandingPage() {
       "drawDB | Online database diagram editor and SQL generator";
 
     fetchStats();
+    fetchDiagrams();
   }, []);
 
   return (
@@ -230,6 +265,38 @@ export default function LandingPage() {
           <Tweet id="1776842268042756248" />
         </div>
       </div>
+      
+      {/* Saved Diagrams Section */}
+      <div id="saved-diagrams-section" className="py-8 px-36 md:px-8">
+        <FadeIn duration={1}>
+          <h2 className="text-2xl mt-1 font-medium text-center mb-6">Your Saved Diagrams</h2>
+          {isLoading && <p className="text-center">Loading diagrams...</p>}
+          {error && <p className="text-center text-red-500">{error}</p>}
+          {!isLoading && !error && diagrams.length === 0 && (
+            <p className="text-center">No diagrams found. Create one using the editor!</p>
+          )}
+          {!isLoading && !error && diagrams.length > 0 && (
+            <div className="max-w-2xl mx-auto bg-white shadow-lg rounded-lg border border-zinc-200">
+              <ul className="divide-y divide-zinc-200">
+                {diagrams.map(diagram => (
+                  <li 
+                    key={diagram.id} 
+                    className="px-6 py-4 hover:bg-zinc-100 transition-colors duration-150 cursor-pointer"
+                    onClick={() => handleDiagramClick(diagram.id)}
+                  >
+                    <div className="font-semibold text-sky-700 text-lg">
+                      {diagram.name || "Untitled Diagram"}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Last Modified: {new Date(diagram.lastModified).toLocaleString()}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </FadeIn>
+      </div>
 
       {/* Contact us */}
       <svg
@@ -295,10 +362,11 @@ export default function LandingPage() {
         </div>
       </div>
 
-      <div className="bg-red-700 py-1 text-center text-white text-xs font-semibold px-3">
+      {/* Outdated information banner removed */}
+      {/* <div className="bg-red-700 py-1 text-center text-white text-xs font-semibold px-3">
         Attention! The diagrams are saved in your browser. Before clearing the
         browser make sure to back up your data.
-      </div>
+      </div> */}
       <hr className="border-zinc-300" />
       <div className="text-center text-sm py-3">
         &copy; 2024 <strong>drawDB</strong> - All right reserved.

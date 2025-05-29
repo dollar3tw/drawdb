@@ -7,7 +7,7 @@ import {
 } from "@douyinfe/semi-ui";
 import { DB, MODAL, STATUS } from "../../../data/constants";
 import { useState } from "react";
-import { db } from "../../../data/db";
+import { getDiagramByIdAPI } from "../../../data/db";
 import {
   useAreas,
   useEnums,
@@ -33,7 +33,7 @@ import ImportDiagram from "./ImportDiagram";
 import ImportSource from "./ImportSource";
 import SetTableWidth from "./SetTableWidth";
 import Language from "./Language";
-import Share from "./Share";
+// import Share from "./Share"; // Gist-related Share component removed
 import CodeEditor from "../../CodeEditor";
 import { useTranslation } from "react-i18next";
 import { importSQL } from "../../../utils/importSQL";
@@ -98,8 +98,7 @@ export default function Modal({
   };
 
   const loadDiagram = async (id) => {
-    await db.diagrams
-      .get(id)
+    await getDiagramByIdAPI(id)
       .then((diagram) => {
         if (diagram) {
           if (diagram.database) {
@@ -341,8 +340,9 @@ export default function Modal({
         return <SetTableWidth />;
       case MODAL.LANGUAGE:
         return <Language />;
-      case MODAL.SHARE:
-        return <Share title={title} setModal={setModal} />;
+      // MODAL.SHARE case removed as Gist functionality is removed
+      // case MODAL.SHARE:
+      //   return <Share title={title} setModal={setModal} />;
       default:
         return <></>;
     }
@@ -386,9 +386,9 @@ export default function Modal({
           ((modal === MODAL.IMG || modal === MODAL.CODE) && !exportData.data) ||
           (modal === MODAL.SAVEAS && saveAsTitle === "") ||
           (modal === MODAL.IMPORT_SRC && importSource.src === ""),
-        hidden: modal === MODAL.SHARE,
+        // hidden: modal === MODAL.SHARE, // MODAL.SHARE removed
       }}
-      hasCancel={modal !== MODAL.SHARE}
+      // hasCancel={modal !== MODAL.SHARE} // MODAL.SHARE removed, so hasCancel is always true unless explicitly false
       cancelText={t("cancel")}
       width={getModalWidth(modal)}
       bodyStyle={{

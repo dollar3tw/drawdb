@@ -47,7 +47,13 @@ import jsPDF from "jspdf";
 import { useHotkeys } from "react-hotkeys-hook";
 import { Validator } from "jsonschema";
 import { areaSchema, noteSchema, tableSchema } from "../../data/schemas";
-import { db } from "../../data/db";
+// import { db } from "../../data/db"; // Dexie db removed, API functions imported directly below
+import {
+  // Make sure to include other db functions if they are used elsewhere, or adjust this import
+  deleteDiagramAPI,
+  createTemplateAPI, 
+  // ... other API functions that might be used by ControlPanel ...
+} from "../../data/db";
 import {
   useLayout,
   useSettings,
@@ -74,10 +80,10 @@ import { databases } from "../../data/databases";
 import { jsonToMermaid } from "../../utils/exportAs/mermaid";
 import { isRtl } from "../../i18n/utils/rtl";
 import { jsonToDocumentation } from "../../utils/exportAs/documentation";
-import { IdContext } from "../Workspace";
+// import { IdContext } from "../Workspace"; // Gist IdContext removed
 import { socials } from "../../data/socials";
 import { toDBML } from "../../utils/exportAs/dbml";
-import { exportSavedData } from "../../utils/exportSavedData";
+// import { exportSavedData } from "../../utils/exportSavedData"; // Functionality removed
 import { nanoid } from "nanoid";
 
 export default function ControlPanel({
@@ -123,7 +129,7 @@ export default function ControlPanel({
   const { selectedElement, setSelectedElement } = useSelect();
   const { transform, setTransform } = useTransform();
   const { t, i18n } = useTranslation();
-  const { setGistId } = useContext(IdContext);
+  // const { setGistId } = useContext(IdContext); // Gist IdContext removed
   const navigate = useNavigate();
 
   const invertLayout = (component) =>
@@ -725,22 +731,35 @@ export default function ControlPanel({
         shortcut: "Ctrl+Shift+S",
       },
       save_as_template: {
-        function: () => {
-          db.templates
-            .add({
-              title: title,
-              tables: tables,
-              database: database,
-              relationships: relationships,
-              notes: notes,
-              subjectAreas: areas,
-              custom: 1,
-              ...(databases[database].hasEnums && { enums: enums }),
-              ...(databases[database].hasTypes && { types: types }),
-            })
-            .then(() => {
+        function: async () => {
+          const templateData = {
+            title: title, // Using current diagram title
+            databaseType: database,
+            tables: tables,
+            relationships: relationships,
+            notes: notes,
+            subjectAreas: areas, // Mapping 'areas' from diagram state to 'subjectAreas' for template
+            pan: transform.pan,
+            zoom: transform.zoom,
+            custom: 1,
+            ...(databases[database]?.hasEnums && { enums: enums }),
+            ...(databases[database]?.hasTypes && { types: types }),
+          };
+          try {
+            const newTemplate = await createTemplateAPI(templateData);
+            if (newTemplate && newTemplate.id) {
               Toast.success(t("template_saved"));
-            });
+              // Optionally, if you want to load this new template:
+              // setDiagramId(newTemplate.id); // This might be confusing as it's a template ID
+              // window.name = `t ${newTemplate.id}`;
+              // navigate(0); // To force a reload with new window.name
+            } else {
+              Toast.error(t("failed_to_save_template"));
+            }
+          } catch (error) {
+            console.error("Failed to save as template:", error);
+            Toast.error(t("failed_to_save_template"));
+          }
         },
       },
       rename: {
@@ -754,11 +773,16 @@ export default function ControlPanel({
           message: t("are_you_sure_delete_diagram"),
         },
         function: async () => {
-          await db.diagrams
-            .delete(diagramId)
-            .then(() => {
-              setDiagramId(0);
-              setTitle("Untitled diagram");
+          if (!diagramId) { // Prevent deletion if no diagram is loaded
+            Toast.error(t("no_diagram_selected"));
+            return;
+          }
+          try {
+            await deleteDiagramAPI(diagramId);
+            Toast.success(t("diagram_deleted"));
+            // Reset workspace state
+            setDiagramId(0); // Assuming 0 means no diagram is loaded or new diagram state
+            setTitle("Untitled diagram");
               setTables([]);
               setRelationships([]);
               setAreas([]);
@@ -767,9 +791,11 @@ export default function ControlPanel({
               setEnums([]);
               setUndoStack([]);
               setRedoStack([]);
-              setGistId("");
-            })
-            .catch(() => Toast.error(t("oops_smth_went_wrong")));
+              window.name = ""; // Clear window.name to signify no specific diagram is loaded
+            } catch (error) {
+              console.error("Failed to delete diagram:", error);
+              Toast.error(t("failed_to_delete_diagram"));
+            }
         },
       },
       import_from: {
@@ -1139,6 +1165,7 @@ export default function ControlPanel({
           message: t("are_you_sure_clear"),
         },
         function: async () => {
+          // Reset all workspace states to represent a new, empty diagram
           setTables([]);
           setRelationships([]);
           setAreas([]);
@@ -1147,21 +1174,20 @@ export default function ControlPanel({
           setTypes([]);
           setUndoStack([]);
           setRedoStack([]);
+          setTransform({ pan: { x: 0, y: 0 }, zoom: 1 }); // Reset view
+          
+          // Important: Reset diagram-specific identifiers
+          setDiagramId(0); // Set to 0 or a specific "new diagram" indicator
+          setTitle(t("untitled_diagram")); // Reset title to default
+          window.name = ""; // Clear window name to signify a new session
 
-          if (!diagramId) {
-            Toast.error(t("oops_smth_went_wrong"));
-            return;
-          }
-
-          db.table("diagrams")
-            .delete(diagramId)
-            .catch((error) => {
-              Toast.error(t("oops_smth_went_wrong"));
-              console.error(
-                `Error deleting records with gistId '${diagramId}':`,
-                error,
-              );
-            });
+          // No need to interact with the backend for a "clear" operation.
+          // Deleting the diagram from persistence is a separate action ("Delete Diagram").
+          // The old Dexie call to delete from local IndexedDB is removed.
+          
+          // The confirmation for this action is handled by the Popconfirm wrapper in the menu definition.
+          // No need for an additional "if (!diagramId)" check here, as clearing an empty workspace is fine.
+          Toast.success(t("workspace_cleared")); // Optional: notify user
         },
       },
       edit: {
@@ -1392,25 +1418,26 @@ export default function ControlPanel({
       language: {
         function: () => setModal(MODAL.LANGUAGE),
       },
-      export_saved_data: {
-        function: exportSavedData,
-      },
-      flush_storage: {
-        warning: {
-          title: t("flush_storage"),
-          message: t("are_you_sure_flush_storage"),
-        },
-        function: async () => {
-          db.delete()
-            .then(() => {
-              Toast.success(t("storage_flushed"));
-              window.location.reload(false);
-            })
-            .catch(() => {
-              Toast.error(t("oops_smth_went_wrong"));
-            });
-        },
-      },
+      // export_saved_data: { // Functionality removed
+      //   function: exportSavedData,
+      // },
+      // flush_storage: { // Functionality removed as it's Dexie-specific and no longer relevant
+      //   warning: {
+      //     title: t("flush_storage"),
+      //     message: t("are_you_sure_flush_storage"),
+      //   },
+      //   function: async () => {
+      //     // db.delete() // This was the Dexie call
+      //     //   .then(() => {
+      //     //     Toast.success(t("storage_flushed"));
+      //     //     window.location.reload(false);
+      //     //   })
+      //     //   .catch(() => {
+      //     //     Toast.error(t("oops_smth_went_wrong"));
+      //     //   });
+      //     Toast.info(t("this_feature_is_no_longer_available")); // Inform user
+      //   },
+      // },
     },
     help: {
       docs: {
@@ -1469,17 +1496,18 @@ export default function ControlPanel({
             style={isRtl(i18n.language) ? { direction: "rtl" } : {}}
           >
             {header()}
-            {window.name.split(" ")[0] !== "t" && (
+            {/* Share button and its Gist-related MODAL.SHARE functionality removed */}
+            {/* {window.name.split(" ")[0] !== "t" && (
               <Button
                 type="primary"
                 className="!text-base me-2 !pe-6 !ps-5 !py-[18px] !rounded-md"
                 size="default"
                 icon={<IconShareStroked />}
-                onClick={() => setModal(MODAL.SHARE)}
+                onClick={() => setModal(MODAL.SHARE)} 
               >
                 {t("share")}
               </Button>
-            )}
+            )} */}
           </div>
         )}
         {layout.toolbar && toolbar()}
