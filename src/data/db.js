@@ -3,6 +3,11 @@ import { templateSeeds } from "./seeds"; // Keep for potential future use
 
 // 從環境變數或默認值獲取 API 基礎 URL
 const getApiBaseUrl = () => {
+  // 在生產環境中，API 和前端在同一個域名下
+  if (import.meta.env.PROD) {
+    return window.location.origin;
+  }
+  // 開發環境中使用環境變數或默認值
   return import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 };
 

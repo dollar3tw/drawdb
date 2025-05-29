@@ -1,13 +1,14 @@
 services:
   drawdb:
-    image: node:20-alpine
-    container_name: drawdb
+    build: .
+    container_name: drawdb-integrated
     ports:
-      - 5173:5173
-    working_dir: /var/www/html
+      - "3001:3001"
     volumes:
-      - ./:/var/www/html
-    command: sh -c "npm install && npm run dev -- --host"
+      - ./backend/drawdb.sqlite:/app/backend/drawdb.sqlite
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
     networks:
       - default
 

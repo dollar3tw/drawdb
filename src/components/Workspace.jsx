@@ -101,29 +101,40 @@ export default function WorkSpace() {
         // searchParams.delete("shareId"); // Gist functionality removed
         // setSearchParams(searchParams); // Gist functionality removed
         if ((id === 0 && window.name === "") || op === "lt") { // Create new diagram
-          // 檢查名稱重複
-          const existingDiagrams = await getAllDiagramsAPI();
-          let finalTitle = title;
-          let counter = 1;
-          
-          // 檢查是否有重複的名稱
-          while (existingDiagrams.some(d => d.name === finalTitle)) {
-            finalTitle = `${title} (${counter})`;
-            counter++;
+          // 防止重複儲存：檢查是否已經在儲存過程中
+          if (window.savingInProgress) {
+            console.log("Save already in progress, skipping...");
+            return;
           }
+          window.savingInProgress = true;
           
-          // 如果名稱被修改了，更新 payload 和本地狀態
-          if (finalTitle !== title) {
-            diagramPayload.name = finalTitle;
-            setTitle(finalTitle);
+          try {
+            // 檢查名稱重複
+            const existingDiagrams = await getAllDiagramsAPI();
+            let finalTitle = title;
+            let counter = 1;
+            
+            // 檢查是否有重複的名稱
+            while (existingDiagrams.some(d => d.name === finalTitle)) {
+              finalTitle = `${title} (${counter})`;
+              counter++;
+            }
+            
+            // 如果名稱被修改了，更新 payload 和本地狀態
+            if (finalTitle !== title) {
+              diagramPayload.name = finalTitle;
+              setTitle(finalTitle);
+            }
+            
+            const newDiagram = await createDiagramAPI(diagramPayload);
+            setId(newDiagram.id);
+            setTitle(newDiagram.name); // Backend might change the name slightly or confirm it
+            setLastSaved(new Date(newDiagram.lastModified).toLocaleString());
+            window.name = `d ${newDiagram.id}`;
+            setSaveState(State.SAVED);
+          } finally {
+            window.savingInProgress = false;
           }
-          
-          const newDiagram = await createDiagramAPI(diagramPayload);
-          setId(newDiagram.id);
-          setTitle(newDiagram.name); // Backend might change the name slightly or confirm it
-          setLastSaved(new Date(newDiagram.lastModified).toLocaleString());
-          window.name = `d ${newDiagram.id}`;
-          setSaveState(State.SAVED);
         } else { // Update existing diagram
           const updatedDiagram = await updateDiagramAPI(id, diagramPayload);
           // Backend returns the full updated diagram, could update other fields if necessary
@@ -154,26 +165,25 @@ export default function WorkSpace() {
     } catch (error) {
       console.error("Error saving data:", error);
       setSaveState(State.ERROR);
+      window.savingInProgress = false; // 確保在錯誤時也清除標記
     }
   }, [
-    // searchParams, // Gist functionality removed
-    // setSearchParams, // Gist functionality removed
+    saveState,
+    database,
+    title,
     tables,
     relationships,
     notes,
     areas,
-    types,
-    title,
-    id,
     tasks,
     transform,
-    setSaveState,
-    database,
     enums,
-    saveState,
-    // Added missing dependencies that are used in save
-    database, tables, relationships, notes, areas, tasks, transform, enums, types, id, title, 
-    setSaveState, setId, setTitle, setLastSaved // state setters
+    types,
+    id,
+    setSaveState,
+    setId,
+    setTitle,
+    setLastSaved
   ]);
 
   const load = useCallback(async () => {

@@ -7,7 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:start": "cd backend && npm start",
+    "backend:setup": "cd backend && npm install",
+    "full:setup": "npm install && npm run backend:setup",
+    "full:dev": "concurrently \"npm run dev\" \"npm run backend:dev\"",
+    "full:build": "npm run build && npm run backend:start",
+    "start": "npm run full:build"
   },
   "dependencies": {
     "@dbml/core": "^3.9.7-alpha.0",
@@ -50,6 +57,7 @@
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
     "eslint": "^8.55.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.33.2",

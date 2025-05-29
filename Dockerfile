@@ -1,15 +1,30 @@
-# Stage 1: Build the app
-FROM node:20-alpine AS build
+# 使用 Node.js 官方映像
+FROM node:20-alpine
+
+# 設定工作目錄
 WORKDIR /app
+
+# 複製 package.json 檔案
 COPY package*.json ./
-RUN npm ci
+COPY backend/package*.json ./backend/
+
+# 安裝前端依賴
+RUN npm install
+
+# 安裝後端依賴
+RUN cd backend && npm install
+
+# 複製所有原始碼
 COPY . .
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+# 建置前端
 RUN npm run build
 
-# Stage 2: Setup the Nginx Server to serve the app
-FROM nginx:stable-alpine3.17 AS production
-COPY --from=build /app/dist /usr/share/nginx/html
-RUN echo 'server { listen 80; server_name _; root /usr/share/nginx/html;  location / { try_files $uri /index.html; } }' > /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# 暴露埠號
+EXPOSE 3001
+
+# 設定工作目錄到後端
+WORKDIR /app/backend
+
+# 啟動後端服務 (會同時提供前端靜態檔案)
+CMD ["npm", "start"]

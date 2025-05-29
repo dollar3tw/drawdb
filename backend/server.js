@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const db = require('./database/database'); // We'll create this next
 
 const app = express();
@@ -9,10 +10,8 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Test route
-app.get('/', (req, res) => {
-  res.json({ message: 'DrawDB backend is running!' });
-});
+// 提供前端靜態檔案
+app.use(express.static(path.join(__dirname, '../dist')));
 
 // API routes
 const authRoutes = require('./routes/auth');
@@ -23,6 +22,16 @@ app.use('/api/diagrams', diagramRoutes);
 
 const templateRoutes = require('./routes/templates');
 app.use('/api/templates', templateRoutes);
+
+// 所有非 API 路由都返回 index.html (用於 React Router)
+app.get('*', (req, res) => {
+  // 如果是 API 路由，返回 404
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ message: 'API endpoint not found' });
+  }
+  // 否則返回前端應用
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
 
 // 定期清理過期會話（每小時執行一次）
 setInterval(async () => {
@@ -38,7 +47,10 @@ setInterval(async () => {
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`🚀 DrawDB 服務已啟動！`);
+  console.log(`📱 前端網站: http://localhost:${PORT}`);
+  console.log(`🔗 API 服務: http://localhost:${PORT}/api`);
+  console.log(`💾 資料庫: SQLite (backend/drawdb.sqlite)`);
 });
 
 // Initialize database
