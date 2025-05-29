@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
     const diagrams = await dbHelpers.getAllDiagrams();
     // getAllDiagrams in database.js already parses JSON fields
     res.status(200).json(diagrams);
-  } catch (error) < {
+  } catch (error) {
     console.error("Error listing diagrams:", error);
     res.status(500).json({ error: 'Failed to retrieve diagrams' });
   }

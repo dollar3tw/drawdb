@@ -15,7 +15,7 @@ import warp from "../assets/warp.png";
 import screenshot from "../assets/screenshot.png";
 import FadeIn from "../animations/FadeIn";
 import axios from "axios";
-import { getAllDiagramsAPI } from "../../data/db"; // Added API import
+import { getAllDiagramsAPI } from "../data/db"; // Fixed import path
 import { languages } from "../i18n/i18n";
 import { Tweet } from "react-tweet";
 import { socials } from "../data/socials";

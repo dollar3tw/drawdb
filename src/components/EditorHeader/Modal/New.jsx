@@ -1,13 +1,27 @@
-import { db } from "../../../data/db";
+import { useState, useEffect } from "react";
+import { getAllTemplatesAPI } from "../../../data/db";
 import { useSettings } from "../../../hooks";
-import { useLiveQuery } from "dexie-react-hooks";
 import Thumbnail from "../../Thumbnail";
 import { useTranslation } from "react-i18next";
 
 export default function New({ selectedTemplateId, setSelectedTemplateId }) {
   const { settings } = useSettings();
   const { t } = useTranslation();
-  const templates = useLiveQuery(() => db.templates.toArray());
+  const [templates, setTemplates] = useState([]);
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const fetchedTemplates = await getAllTemplatesAPI();
+        setTemplates(fetchedTemplates || []);
+      } catch (error) {
+        console.error("Error loading templates:", error);
+        setTemplates([]);
+      }
+    };
+    
+    loadTemplates();
+  }, []);
 
   return (
     <div className="grid grid-cols-3 gap-2 overflow-auto px-1">

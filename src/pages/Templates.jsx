@@ -1,24 +1,33 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Tabs, TabPane, Banner, Steps } from "@douyinfe/semi-ui";
 import { IconDeleteStroked } from "@douyinfe/semi-icons";
-import { db } from "../data/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { getAllTemplatesAPI, deleteTemplateAPI } from "../data/db";
 import Thumbnail from "../components/Thumbnail";
 import logo_light from "../assets/logo_light_160.png";
 import template_screenshot from "../assets/template_screenshot.png";
 
 export default function Templates() {
-  const defaultTemplates = useLiveQuery(() =>
-    db.templates.where({ custom: 0 }).toArray()
-  );
+  const [defaultTemplates, setDefaultTemplates] = useState([]);
+  const [customTemplates, setCustomTemplates] = useState([]);
 
-  const customTemplates = useLiveQuery(() =>
-    db.templates.where({ custom: 1 }).toArray()
-  );
+  const loadTemplates = async () => {
+    try {
+      const templates = await getAllTemplatesAPI();
+      setDefaultTemplates(templates.filter(t => t.custom === 0));
+      setCustomTemplates(templates.filter(t => t.custom === 1));
+    } catch (error) {
+      console.error("Error loading templates:", error);
+    }
+  };
 
   const deleteTemplate = async (id) => {
-    await db.templates.delete(id);
+    try {
+      await deleteTemplateAPI(id);
+      await loadTemplates(); // Reload templates after deletion
+    } catch (error) {
+      console.error("Error deleting template:", error);
+    }
   };
 
   const editTemplate = (id) => {
@@ -33,6 +42,7 @@ export default function Templates() {
 
   useEffect(() => {
     document.title = "Templates | drawDB";
+    loadTemplates();
   }, []);
 
   return (

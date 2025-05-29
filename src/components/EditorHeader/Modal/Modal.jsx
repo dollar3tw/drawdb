@@ -7,7 +7,7 @@ import {
 } from "@douyinfe/semi-ui";
 import { DB, MODAL, STATUS } from "../../../data/constants";
 import { useState } from "react";
-import { db } from "../../../data/db";
+import { getDiagramByIdAPI } from "../../../data/db";
 import {
   useAreas,
   useEnums,
@@ -98,8 +98,7 @@ export default function Modal({
   };
 
   const loadDiagram = async (id) => {
-    await db.diagrams
-      .get(id)
+    await getDiagramByIdAPI(id)
       .then((diagram) => {
         if (diagram) {
           if (diagram.database) {

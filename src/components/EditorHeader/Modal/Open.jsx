@@ -1,12 +1,26 @@
-import { db } from "../../../data/db";
+import { useState, useEffect } from "react";
+import { getAllDiagramsAPI } from "../../../data/db";
 import { Banner } from "@douyinfe/semi-ui";
-import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
 import { databases } from "../../../data/databases";
 
 export default function Open({ selectedDiagramId, setSelectedDiagramId }) {
-  const diagrams = useLiveQuery(() => db.diagrams.toArray());
+  const [diagrams, setDiagrams] = useState([]);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    const loadDiagrams = async () => {
+      try {
+        const fetchedDiagrams = await getAllDiagramsAPI();
+        setDiagrams(fetchedDiagrams || []);
+      } catch (error) {
+        console.error("Error loading diagrams:", error);
+        setDiagrams([]);
+      }
+    };
+    
+    loadDiagrams();
+  }, []);
 
   const getDiagramSize = (d) => {
     const size = JSON.stringify(d).length;
