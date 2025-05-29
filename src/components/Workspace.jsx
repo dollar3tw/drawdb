@@ -4,7 +4,16 @@ import Canvas from "./EditorCanvas/Canvas";
 import { CanvasContextProvider } from "../context/CanvasContext";
 import SidePanel from "./EditorSidePanel/SidePanel";
 import { DB, State } from "../data/constants";
-import { db } from "../data/db";
+// import { db } from "../data/db"; // Dexie db removed
+import {
+  createDiagramAPI,
+  getDiagramByIdAPI,
+  updateDiagramAPI,
+  getAllDiagramsAPI, // For loading latest or all
+  // createTemplateAPI, // Assuming templates are saved if op === 't'
+  getTemplateByIdAPI,
+  updateTemplateAPI,
+} from "../data/db";
 import {
   useLayout,
   useSettings,
@@ -24,16 +33,14 @@ import { useTranslation } from "react-i18next";
 import { databases } from "../data/databases";
 import { isRtl } from "../i18n/utils/rtl";
 import { useSearchParams } from "react-router-dom";
-import { get } from "../api/gists";
+// Gist related import fully removed
 
-export const IdContext = createContext({ gistId: "", setGistId: () => {} });
+// IdContext fully removed
 
 const SIDEPANEL_MIN_WIDTH = 384;
 
 export default function WorkSpace() {
-  const [id, setId] = useState(0);
-  const [gistId, setGistId] = useState("");
-  const [loadedFromGistId, setLoadedFromGistId] = useState("");
+  const [id, setId] = useState(0); // Will now store backend ID
   const [title, setTitle] = useState("Untitled Diagram");
   const [resize, setResize] = useState(false);
   const [width, setWidth] = useState(SIDEPANEL_MIN_WIDTH);
@@ -73,82 +80,66 @@ export default function WorkSpace() {
     const op = name[0];
     const saveAsDiagram = window.name === "" || op === "d" || op === "lt";
 
-    if (saveAsDiagram) {
-      searchParams.delete("shareId");
-      setSearchParams(searchParams);
-      if ((id === 0 && window.name === "") || op === "lt") {
-        await db.diagrams
-          .add({
-            database: database,
-            name: title,
-            gistId: gistId ?? "",
-            lastModified: new Date(),
-            tables: tables,
-            references: relationships,
-            notes: notes,
-            areas: areas,
-            todos: tasks,
-            pan: transform.pan,
-            zoom: transform.zoom,
-            loadedFromGistId: loadedFromGistId,
-            ...(databases[database].hasEnums && { enums: enums }),
-            ...(databases[database].hasTypes && { types: types }),
-          })
-          .then((id) => {
-            setId(id);
-            window.name = `d ${id}`;
-            setSaveState(State.SAVED);
-            setLastSaved(new Date().toLocaleString());
-          });
-      } else {
-        await db.diagrams
-          .update(id, {
-            database: database,
-            name: title,
-            lastModified: new Date(),
-            tables: tables,
-            references: relationships,
-            notes: notes,
-            areas: areas,
-            todos: tasks,
-            gistId: gistId ?? "",
-            pan: transform.pan,
-            zoom: transform.zoom,
-            loadedFromGistId: loadedFromGistId,
-            ...(databases[database].hasEnums && { enums: enums }),
-            ...(databases[database].hasTypes && { types: types }),
-          })
-          .then(() => {
-            setSaveState(State.SAVED);
-            setLastSaved(new Date().toLocaleString());
-          });
-      }
-    } else {
-      await db.templates
-        .update(id, {
-          database: database,
+    // Construct common diagram data
+    const diagramPayload = {
+      databaseType: database, // Renamed from 'database' to 'databaseType' to match backend
+      name: title,
+      tables: tables,
+      relationships: relationships, // Renamed from 'references'
+      notes: notes,
+      areas: areas,
+      todos: tasks, // Add tasks to the payload
+      pan: transform.pan,
+      zoom: transform.zoom,
+      ...(databases[database].hasEnums && { enums: enums }),
+      ...(databases[database].hasTypes && { types: types }),
+    };
+
+    try {
+      if (saveAsDiagram) {
+        // searchParams.delete("shareId"); // Gist functionality removed
+        // setSearchParams(searchParams); // Gist functionality removed
+        if ((id === 0 && window.name === "") || op === "lt") { // Create new diagram
+          const newDiagram = await createDiagramAPI(diagramPayload);
+          setId(newDiagram.id);
+          setTitle(newDiagram.name); // Backend might change the name slightly or confirm it
+          setLastSaved(new Date(newDiagram.lastModified).toLocaleString());
+          window.name = `d ${newDiagram.id}`;
+          setSaveState(State.SAVED);
+        } else { // Update existing diagram
+          const updatedDiagram = await updateDiagramAPI(id, diagramPayload);
+          // Backend returns the full updated diagram, could update other fields if necessary
+          setLastSaved(new Date(updatedDiagram.lastModified).toLocaleString());
+          setSaveState(State.SAVED);
+        }
+      } else { // Save as template (assuming 'op' corresponds to template operations)
+        // Construct template data - similar to diagram but might have different fields e.g. 'subjectAreas'
+        const templatePayload = {
+          databaseType: database,
           title: title,
           tables: tables,
           relationships: relationships,
           notes: notes,
-          subjectAreas: areas,
-          todos: tasks,
+          subjectAreas: areas, // Field name for templates
+          // todos: tasks, // 'todos' is not in backend schema for templates
           pan: transform.pan,
           zoom: transform.zoom,
+          custom: 1, // Assuming custom templates are being saved
           ...(databases[database].hasEnums && { enums: enums }),
           ...(databases[database].hasTypes && { types: types }),
-        })
-        .then(() => {
-          setSaveState(State.SAVED);
-          setLastSaved(new Date().toLocaleString());
-        })
-        .catch(() => {
-          setSaveState(State.ERROR);
-        });
+        };
+        // Assuming 'id' here is the template ID for update operations
+        await updateTemplateAPI(id, templatePayload);
+        setSaveState(State.SAVED);
+        setLastSaved(new Date().toLocaleString()); // updateTemplateAPI might not return lastModified
+      }
+    } catch (error) {
+      console.error("Error saving data:", error);
+      setSaveState(State.ERROR);
     }
   }, [
-    searchParams,
-    setSearchParams,
+    // searchParams, // Gist functionality removed
+    // setSearchParams, // Gist functionality removed
     tables,
     relationships,
     notes,
@@ -161,173 +152,143 @@ export default function WorkSpace() {
     setSaveState,
     database,
     enums,
-    gistId,
-    loadedFromGistId,
     saveState,
+    // Added missing dependencies that are used in save
+    database, tables, relationships, notes, areas, tasks, transform, enums, types, id, title, 
+    setSaveState, setId, setTitle, setLastSaved // state setters
   ]);
 
   const load = useCallback(async () => {
     const loadLatestDiagram = async () => {
-      await db.diagrams
-        .orderBy("lastModified")
-        .last()
-        .then((d) => {
-          if (d) {
-            if (d.database) {
-              setDatabase(d.database);
-            } else {
-              setDatabase(DB.GENERIC);
-            }
-            setId(d.id);
-            setGistId(d.gistId);
-            setLoadedFromGistId(d.loadedFromGistId);
-            setTitle(d.name);
-            setTables(d.tables);
-            setRelationships(d.references);
-            setNotes(d.notes);
-            setAreas(d.areas);
-            setTasks(d.todos ?? []);
-            setTransform({ pan: d.pan, zoom: d.zoom });
-            if (databases[database].hasTypes) {
-              setTypes(d.types ?? []);
-            }
-            if (databases[database].hasEnums) {
-              setEnums(d.enums ?? []);
-            }
-            window.name = `d ${d.id}`;
-          } else {
-            window.name = "";
-            if (selectedDb === "") setShowSelectDbModal(true);
-          }
-        })
-        .catch((error) => {
-          console.log(error);
-        });
-    };
-
-    const loadDiagram = async (id) => {
-      await db.diagrams
-        .get(id)
-        .then((diagram) => {
-          if (diagram) {
-            if (diagram.database) {
-              setDatabase(diagram.database);
-            } else {
-              setDatabase(DB.GENERIC);
-            }
-            setId(diagram.id);
-            setGistId(diagram.gistId);
-            setLoadedFromGistId(diagram.loadedFromGistId);
-            setTitle(diagram.name);
-            setTables(diagram.tables);
-            setRelationships(diagram.references);
-            setAreas(diagram.areas);
-            setNotes(diagram.notes);
-            setTasks(diagram.todos ?? []);
-            setTransform({
-              pan: diagram.pan,
-              zoom: diagram.zoom,
-            });
-            setUndoStack([]);
-            setRedoStack([]);
-            if (databases[database].hasTypes) {
-              setTypes(diagram.types ?? []);
-            }
-            if (databases[database].hasEnums) {
-              setEnums(diagram.enums ?? []);
-            }
-            window.name = `d ${diagram.id}`;
-          } else {
-            window.name = "";
-          }
-        })
-        .catch((error) => {
-          console.log(error);
-        });
-    };
-
-    const loadTemplate = async (id) => {
-      await db.templates
-        .get(id)
-        .then((diagram) => {
-          if (diagram) {
-            if (diagram.database) {
-              setDatabase(diagram.database);
-            } else {
-              setDatabase(DB.GENERIC);
-            }
-            setId(diagram.id);
-            setTitle(diagram.title);
-            setTables(diagram.tables);
-            setRelationships(diagram.relationships);
-            setAreas(diagram.subjectAreas);
-            setTasks(diagram.todos ?? []);
-            setNotes(diagram.notes);
-            setTransform({
-              zoom: 1,
-              pan: { x: 0, y: 0 },
-            });
-            setUndoStack([]);
-            setRedoStack([]);
-            if (databases[database].hasTypes) {
-              setTypes(diagram.types ?? []);
-            }
-            if (databases[database].hasEnums) {
-              setEnums(diagram.enums ?? []);
-            }
-          } else {
-            if (selectedDb === "") setShowSelectDbModal(true);
-          }
-        })
-        .catch((error) => {
-          console.log(error);
-          if (selectedDb === "") setShowSelectDbModal(true);
-        });
-    };
-
-    const loadFromGist = async (shareId) => {
       try {
-        const res = await get(shareId);
-        const diagramSrc = res.data.files["share.json"].content;
-        const d = JSON.parse(diagramSrc);
-        setUndoStack([]);
-        setRedoStack([]);
-        setLoadedFromGistId(shareId);
-        setDatabase(d.database);
-        setTitle(d.title);
-        setTables(d.tables);
-        setRelationships(d.relationships);
-        setNotes(d.notes);
-        setAreas(d.subjectAreas);
-        setTransform(d.transform);
-        if (databases[d.database].hasTypes) {
-          setTypes(d.types ?? []);
+        const diagrams = await getAllDiagramsAPI();
+        if (diagrams && diagrams.length > 0) {
+          // Assuming diagrams are sorted by lastModified desc by API or sort here
+          // For now, let's pick the first one if sorted, or find the one with max lastModified
+          const d = diagrams.reduce((latest, current) => 
+            new Date(latest.lastModified) > new Date(current.lastModified) ? latest : current
+          );
+          
+          if (d.databaseType) { // Note: field is databaseType from backend
+            setDatabase(d.databaseType);
+          } else {
+            setDatabase(DB.GENERIC);
+          }
+          setId(d.id);
+          // setGistId(d.gistId); // Gist functionality removed
+          // setLoadedFromGistId(d.loadedFromGistId); // Gist functionality removed
+          setTitle(d.name);
+          setTables(d.tables);
+          setRelationships(d.relationships); // Note: field is relationships from backend
+          setNotes(d.notes);
+          setAreas(d.areas);
+          setTasks(d.todos || []); // Load todos into tasks state
+          setTransform({ pan: d.pan, zoom: d.zoom });
+          if (databases[d.databaseType].hasTypes) { // Use d.databaseType
+            setTypes(d.types ?? []);
+          }
+          if (databases[d.databaseType].hasEnums) { // Use d.databaseType
+            setEnums(d.enums ?? []);
+          }
+          window.name = `d ${d.id}`;
+        } else {
+          window.name = "";
+          if (selectedDb === "") setShowSelectDbModal(true);
         }
-        if (databases[d.database].hasEnums) {
-          setEnums(d.enums ?? []);
-        }
-      } catch (e) {
-        console.log(e);
-        setSaveState(State.FAILED_TO_LOAD);
+      } catch (error) {
+        console.error("Error loading latest diagram:", error);
+        setSaveState(State.FAILED_TO_LOAD); // Or a general load error state
+        window.name = "";
+        if (selectedDb === "") setShowSelectDbModal(true);
       }
     };
 
-    const shareId = searchParams.get("shareId");
-    if (shareId) {
-      const existingDiagram = await db.diagrams.get({
-        loadedFromGistId: shareId,
-      });
-
-      if (existingDiagram) {
-        window.name = "d " + existingDiagram.id;
-        setId(existingDiagram.id);
-      } else {
+    const loadDiagram = async (diagramId) => {
+      try {
+        const diagram = await getDiagramByIdAPI(diagramId);
+        if (diagram) {
+          if (diagram.databaseType) { // Note: field is databaseType
+            setDatabase(diagram.databaseType);
+          } else {
+            setDatabase(DB.GENERIC);
+          }
+          setId(diagram.id);
+          // setGistId(diagram.gistId); // Gist functionality removed
+          // setLoadedFromGistId(diagram.loadedFromGistId); // Gist functionality removed
+          setTitle(diagram.name);
+          setTables(diagram.tables);
+          setRelationships(diagram.relationships); // Note: field is relationships
+          setAreas(diagram.areas);
+          setNotes(diagram.notes);
+          setTasks(diagram.todos || []); // Load todos into tasks state
+          setTransform({
+            pan: diagram.pan,
+            zoom: diagram.zoom,
+          });
+          setUndoStack([]);
+          setRedoStack([]);
+          if (databases[diagram.databaseType].hasTypes) { // Use diagram.databaseType
+            setTypes(diagram.types ?? []);
+          }
+          if (databases[diagram.databaseType].hasEnums) { // Use diagram.databaseType
+            setEnums(diagram.enums ?? []);
+          }
+          window.name = `d ${diagram.id}`;
+        } else {
+          window.name = ""; // Diagram not found
+          setSaveState(State.FAILED_TO_LOAD); // Or specific error
+          if (selectedDb === "") setShowSelectDbModal(true); // Fallback to select DB
+        }
+      } catch (error) {
+        console.error(`Error loading diagram ${diagramId}:`, error);
+        setSaveState(State.FAILED_TO_LOAD);
         window.name = "";
-        setId(0);
+        if (selectedDb === "") setShowSelectDbModal(true);
       }
-      await loadFromGist(shareId);
-      return;
-    }
+    };
+
+    const loadTemplate = async (templateId) => {
+      try {
+        const template = await getTemplateByIdAPI(templateId);
+        if (template) {
+          if (template.databaseType) { // Note: field is databaseType
+            setDatabase(template.databaseType);
+          } else {
+            setDatabase(DB.GENERIC);
+          }
+          setId(template.id); // This might be confusing; workspace 'id' usually for diagram
+          setTitle(template.title);
+          setTables(template.tables);
+          setRelationships(template.relationships);
+          setAreas(template.subjectAreas); // Field name for templates
+          // setTasks(template.todos ?? []); // 'todos' not in backend schema
+          setNotes(template.notes);
+          setTransform({ // Reset transform for templates or use stored one
+            zoom: template.zoom || 1,
+            pan: template.pan || { x: 0, y: 0 },
+          });
+          setUndoStack([]);
+          setRedoStack([]);
+          if (databases[template.databaseType].hasTypes) { // Use template.databaseType
+            setTypes(template.types ?? []);
+          }
+          if (databases[template.databaseType].hasEnums) { // Use template.databaseType
+            setEnums(template.enums ?? []);
+          }
+          // window.name might need adjustment if loading a template means it's the "active" item
+        } else {
+          setSaveState(State.FAILED_TO_LOAD);
+          if (selectedDb === "") setShowSelectDbModal(true);
+        }
+      } catch (error) {
+        console.error(`Error loading template ${templateId}:`, error);
+        setSaveState(State.FAILED_TO_LOAD);
+        if (selectedDb === "") setShowSelectDbModal(true);
+      }
+    };
+
+    // All Gist/shareId related logic removed from load function.
+    // The console.warn and searchParams.delete are also removed.
 
     if (window.name === "") {
       await loadLatestDiagram();
@@ -364,7 +325,23 @@ export default function WorkSpace() {
     setEnums,
     selectedDb,
     setSaveState,
-    searchParams,
+    setTransform,
+    setRedoStack,
+    setUndoStack,
+    setRelationships,
+    setTables,
+    setAreas,
+    setNotes,
+    setTypes,
+    setTasks, // Though 'todos' seems unused with backend schema
+    setDatabase,
+    // database, // 'database' is in the dependency array already via setDatabase if it's from useDiagram()
+    setEnums,
+    selectedDb,
+    setSaveState,
+    // searchParams and setSearchParams are no longer needed here as shareId logic is fully removed
+    // Added missing state setters
+    setId, setTitle 
   ]);
 
   useEffect(() => {
@@ -389,11 +366,13 @@ export default function WorkSpace() {
     notes?.length,
     types?.length,
     relationships?.length,
-    tasks?.length,
-    transform.zoom,
+  tasks?.length, // Add tasks length to dependencies
+  transform.zoom, // Assuming zoom changes should trigger save
+  transform.pan, // Assuming pan changes should trigger save
     title,
-    gistId,
     setSaveState,
+  // Added other relevant state that should trigger autosave if changed
+  database, enums 
   ]);
 
   useEffect(() => {
@@ -404,20 +383,19 @@ export default function WorkSpace() {
     document.title = "Editor | drawDB";
 
     load();
-  }, [load]);
+  }, [load]); // 'load' dependency is correct
 
   return (
     <div className="h-full flex flex-col overflow-hidden theme">
-      <IdContext.Provider value={{ gistId, setGistId }}>
         <ControlPanel
-          diagramId={id}
-          setDiagramId={setId}
+          diagramId={id} // This 'id' is now the backend diagram ID
+          setDiagramId={setId} // This will set the backend diagram ID
           title={title}
           setTitle={setTitle}
           lastSaved={lastSaved}
           setLastSaved={setLastSaved}
         />
-      </IdContext.Provider>
+      {/* </IdContext.Provider> */}
       <div
         className="flex h-full overflow-y-auto"
         onPointerUp={(e) => e.isPrimary && setResize(false)}
