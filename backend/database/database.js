@@ -51,7 +51,9 @@ const initDb = (callback = () => {}) => {
       pan TEXT,
       zoom REAL,
       todos TEXT DEFAULT '[]',
-      lastModified DATETIME DEFAULT CURRENT_TIMESTAMP
+      lastModified DATETIME DEFAULT CURRENT_TIMESTAMP,
+      userId INTEGER,
+      FOREIGN KEY (userId) REFERENCES users(id)
     )`, (err) => {
       if (err) {
         console.error("Error creating diagrams table:", err.message);
@@ -78,6 +80,65 @@ const initDb = (callback = () => {}) => {
         return callback(err);
       }
       console.log("Table 'templates' created or already exists.");
+    });
+
+    // Create users table
+    db.run(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('mitadmin', 'editor', 'user')),
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      lastLogin DATETIME,
+      isActive INTEGER DEFAULT 1
+    )`, (err) => {
+      if (err) {
+        console.error("Error creating users table:", err.message);
+        return callback(err);
+      }
+      console.log("Table 'users' created or already exists.");
+      
+      // Create default mitadmin user if not exists
+      db.get("SELECT id FROM users WHERE username = 'mitadmin'", (err, row) => {
+        if (err) {
+          console.error("Error checking for mitadmin user:", err.message);
+        } else if (!row) {
+          // Create default mitadmin user
+          const bcrypt = require('bcrypt');
+          const defaultPassword = 'mitadmin123'; // 預設密碼，建議首次登入後更改
+          bcrypt.hash(defaultPassword, 10, (err, hashedPassword) => {
+            if (err) {
+              console.error("Error hashing default password:", err.message);
+            } else {
+              db.run(`INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)`,
+                ['mitadmin', 'mitadmin@mit.edu', hashedPassword, 'mitadmin'], (err) => {
+                  if (err) {
+                    console.error("Error creating default mitadmin user:", err.message);
+                  } else {
+                    console.log("Default mitadmin user created successfully.");
+                  }
+                });
+            }
+          });
+        }
+      });
+    });
+
+    // Create user sessions table
+    db.run(`CREATE TABLE IF NOT EXISTS user_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      expiresAt DATETIME NOT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    )`, (err) => {
+      if (err) {
+        console.error("Error creating user_sessions table:", err.message);
+        return callback(err);
+      }
+      console.log("Table 'user_sessions' created or already exists.");
       callback(null); // Success
     });
   });
@@ -106,8 +167,8 @@ const parseDiagramRow = (row) => {
 
 async function createDiagram(data) {
   return new Promise((resolve, reject) => {
-    const sql = `INSERT INTO diagrams (name, databaseType, tables, relationships, notes, areas, pan, zoom, todos, lastModified)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+    const sql = `INSERT INTO diagrams (name, databaseType, tables, relationships, notes, areas, pan, zoom, todos, userId, lastModified)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
     const params = [
       data.name,
       data.databaseType,
@@ -117,7 +178,8 @@ async function createDiagram(data) {
       JSON.stringify(data.areas || []),
       JSON.stringify(data.pan || { x: 0, y: 0 }),
       data.zoom == null ? 1 : data.zoom, // Provide default for zoom if null/undefined
-      JSON.stringify(data.todos || []) // Add todos
+      JSON.stringify(data.todos || []), // Add todos
+      data.userId // Add userId parameter
     ];
     db.run(sql, params, function(err) {
       if (err) {
@@ -265,7 +327,23 @@ module.exports = {
   getAllTemplates,
   getTemplateById,
   updateTemplate,
-  deleteTemplate
+  deleteTemplate,
+  // User Functions
+  createUser,
+  getUserById,
+  getUserByUsername,
+  getUserByEmail,
+  updateUser,
+  deleteUser,
+  getAllUsers,
+  // Session Functions
+  createSession,
+  getSessionByToken,
+  deleteSession,
+  deleteExpiredSessions,
+  // Diagram with User Functions
+  getDiagramsByUserId,
+  deleteDiagramByAdmin
 };
 
 // Helper function to parse JSON fields for Templates
@@ -427,5 +505,277 @@ async function deleteTemplate(id) {
         resolve(this.changes); // Returns the number of rows deleted
       }
     });
+  });
+}
+
+// --- User CRUD Functions ---
+
+async function createUser(data) {
+  return new Promise((resolve, reject) => {
+    const sql = `INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)`;
+    const params = [
+      data.username,
+      data.email,
+      data.password, // Should be hashed before calling this function
+      data.role || 'user'
+    ];
+    
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error("Error creating user:", err.message);
+        reject(err);
+      } else {
+        getUserById(this.lastID)
+          .then(newUser => {
+            // Remove password from response
+            delete newUser.password;
+            resolve(newUser);
+          })
+          .catch(fetchErr => {
+            console.error("Error fetching newly created user:", fetchErr.message);
+            reject(fetchErr);
+          });
+      }
+    });
+  });
+}
+
+async function getUserById(id) {
+  return new Promise((resolve, reject) => {
+    const sql = `SELECT * FROM users WHERE id = ?`;
+    db.get(sql, [id], (err, row) => {
+      if (err) {
+        console.error("Error getting user by id:", err.message);
+        reject(err);
+      } else {
+        resolve(row);
+      }
+    });
+  });
+}
+
+async function getUserByUsername(username) {
+  return new Promise((resolve, reject) => {
+    const sql = `SELECT * FROM users WHERE username = ? AND isActive = 1`;
+    db.get(sql, [username], (err, row) => {
+      if (err) {
+        console.error("Error getting user by username:", err.message);
+        reject(err);
+      } else {
+        resolve(row);
+      }
+    });
+  });
+}
+
+async function getUserByEmail(email) {
+  return new Promise((resolve, reject) => {
+    const sql = `SELECT * FROM users WHERE email = ? AND isActive = 1`;
+    db.get(sql, [email], (err, row) => {
+      if (err) {
+        console.error("Error getting user by email:", err.message);
+        reject(err);
+      } else {
+        resolve(row);
+      }
+    });
+  });
+}
+
+async function updateUser(id, data) {
+  return new Promise((resolve, reject) => {
+    const fields = [];
+    const params = [];
+
+    if (data.username !== undefined) {
+      fields.push("username = ?");
+      params.push(data.username);
+    }
+    if (data.email !== undefined) {
+      fields.push("email = ?");
+      params.push(data.email);
+    }
+    if (data.password !== undefined) {
+      fields.push("password = ?");
+      params.push(data.password); // Should be hashed before calling this function
+    }
+    if (data.role !== undefined) {
+      fields.push("role = ?");
+      params.push(data.role);
+    }
+    if (data.lastLogin !== undefined) {
+      fields.push("lastLogin = ?");
+      params.push(data.lastLogin);
+    }
+    if (data.isActive !== undefined) {
+      fields.push("isActive = ?");
+      params.push(data.isActive);
+    }
+
+    if (fields.length === 0) {
+      return getUserById(id).then(user => {
+        delete user.password;
+        resolve(user);
+      }).catch(reject);
+    }
+
+    const sql = `UPDATE users SET ${fields.join(", ")} WHERE id = ?`;
+    params.push(id);
+
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error("Error updating user:", err.message);
+        reject(err);
+      } else {
+        if (this.changes === 0) {
+          resolve(null);
+        } else {
+          getUserById(id)
+            .then(updatedUser => {
+              delete updatedUser.password;
+              resolve(updatedUser);
+            })
+            .catch(fetchErr => {
+              console.error("Error fetching updated user:", fetchErr.message);
+              reject(fetchErr);
+            });
+        }
+      }
+    });
+  });
+}
+
+async function deleteUser(id) {
+  return new Promise((resolve, reject) => {
+    const sql = `DELETE FROM users WHERE id = ?`;
+    db.run(sql, [id], function(err) {
+      if (err) {
+        console.error("Error deleting user:", err.message);
+        reject(err);
+      } else {
+        resolve(this.changes);
+      }
+    });
+  });
+}
+
+async function getAllUsers() {
+  return new Promise((resolve, reject) => {
+    const sql = `SELECT id, username, email, role, createdAt, lastLogin, isActive FROM users ORDER BY createdAt DESC`;
+    db.all(sql, [], (err, rows) => {
+      if (err) {
+        console.error("Error getting all users:", err.message);
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+}
+
+// --- Session Functions ---
+
+async function createSession(userId, token, expiresAt) {
+  return new Promise((resolve, reject) => {
+    const sql = `INSERT INTO user_sessions (userId, token, expiresAt) VALUES (?, ?, ?)`;
+    db.run(sql, [userId, token, expiresAt], function(err) {
+      if (err) {
+        console.error("Error creating session:", err.message);
+        reject(err);
+      } else {
+        resolve({ id: this.lastID, userId, token, expiresAt });
+      }
+    });
+  });
+}
+
+async function getSessionByToken(token) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      SELECT s.*, u.id as userId, u.username, u.email, u.role 
+      FROM user_sessions s 
+      JOIN users u ON s.userId = u.id 
+      WHERE s.token = ? AND s.expiresAt > datetime('now') AND u.isActive = 1
+    `;
+    db.get(sql, [token], (err, row) => {
+      if (err) {
+        console.error("Error getting session by token:", err.message);
+        reject(err);
+      } else {
+        resolve(row);
+      }
+    });
+  });
+}
+
+async function deleteSession(token) {
+  return new Promise((resolve, reject) => {
+    const sql = `DELETE FROM user_sessions WHERE token = ?`;
+    db.run(sql, [token], function(err) {
+      if (err) {
+        console.error("Error deleting session:", err.message);
+        reject(err);
+      } else {
+        resolve(this.changes);
+      }
+    });
+  });
+}
+
+async function deleteExpiredSessions() {
+  return new Promise((resolve, reject) => {
+    const sql = `DELETE FROM user_sessions WHERE expiresAt <= datetime('now')`;
+    db.run(sql, [], function(err) {
+      if (err) {
+        console.error("Error deleting expired sessions:", err.message);
+        reject(err);
+      } else {
+        resolve(this.changes);
+      }
+    });
+  });
+}
+
+// --- Diagram with User Functions ---
+
+async function getDiagramsByUserId(userId) {
+  return new Promise((resolve, reject) => {
+    const sql = `SELECT * FROM diagrams WHERE userId = ? ORDER BY lastModified DESC`;
+    db.all(sql, [userId], (err, rows) => {
+      if (err) {
+        console.error("Error getting diagrams by user id:", err.message);
+        reject(err);
+      } else {
+        resolve(rows.map(parseDiagramRow));
+      }
+    });
+  });
+}
+
+async function deleteDiagramByAdmin(diagramId, adminUserId) {
+  return new Promise((resolve, reject) => {
+    // First check if the admin user has mitadmin role
+    getUserById(adminUserId)
+      .then(admin => {
+        if (!admin || admin.role !== 'mitadmin') {
+          reject(new Error('Unauthorized: Only mitadmin can delete diagrams'));
+          return;
+        }
+        
+        // If authorized, delete the diagram
+        const sql = `DELETE FROM diagrams WHERE id = ?`;
+        db.run(sql, [diagramId], function(err) {
+          if (err) {
+            console.error("Error deleting diagram by admin:", err.message);
+            reject(err);
+          } else {
+            resolve(this.changes);
+          }
+        });
+      })
+      .catch(err => {
+        console.error("Error checking admin authorization:", err.message);
+        reject(err);
+      });
   });
 }

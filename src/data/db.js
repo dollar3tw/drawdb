@@ -1,13 +1,17 @@
 import axios from 'axios';
 import { templateSeeds } from "./seeds"; // Keep for potential future use
 
-const API_BASE_URL = 'http://localhost:3001/api'; // Adjust if your backend runs elsewhere
+// 從環境變數或默認值獲取 API 基礎 URL
+const getApiBaseUrl = () => {
+  return import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+};
 
 // --- Diagram API Functions ---
 
 export const createDiagramAPI = async (diagramData) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/diagrams`, diagramData);
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.post(`${API_BASE_URL}/api/diagrams`, diagramData);
     return response.data;
   } catch (error) {
     console.error("Error creating diagram via API:", error);
@@ -17,7 +21,8 @@ export const createDiagramAPI = async (diagramData) => {
 
 export const getAllDiagramsAPI = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/diagrams`);
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.get(`${API_BASE_URL}/api/diagrams`);
     return response.data;
   } catch (error) {
     console.error("Error fetching all diagrams via API:", error);
@@ -27,7 +32,8 @@ export const getAllDiagramsAPI = async () => {
 
 export const getDiagramByIdAPI = async (id) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/diagrams/${id}`);
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.get(`${API_BASE_URL}/api/diagrams/${id}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching diagram by ID ${id} via API:`, error);
@@ -37,7 +43,8 @@ export const getDiagramByIdAPI = async (id) => {
 
 export const updateDiagramAPI = async (id, diagramData) => {
   try {
-    const response = await axios.put(`${API_BASE_URL}/diagrams/${id}`, diagramData);
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.put(`${API_BASE_URL}/api/diagrams/${id}`, diagramData);
     return response.data;
   } catch (error) {
     console.error(`Error updating diagram by ID ${id} via API:`, error);
@@ -47,7 +54,8 @@ export const updateDiagramAPI = async (id, diagramData) => {
 
 export const deleteDiagramAPI = async (id) => {
   try {
-    const response = await axios.delete(`${API_BASE_URL}/diagrams/${id}`);
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.delete(`${API_BASE_URL}/api/diagrams/${id}`);
     return response.data; // Or handle 204 No Content response appropriately
   } catch (error) {
     console.error(`Error deleting diagram by ID ${id} via API:`, error);
@@ -59,7 +67,8 @@ export const deleteDiagramAPI = async (id) => {
 
 export const createTemplateAPI = async (templateData) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/templates`, templateData);
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.post(`${API_BASE_URL}/api/templates`, templateData);
     return response.data;
   } catch (error) {
     console.error("Error creating template via API:", error);
@@ -69,7 +78,8 @@ export const createTemplateAPI = async (templateData) => {
 
 export const getAllTemplatesAPI = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/templates`);
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.get(`${API_BASE_URL}/api/templates`);
     return response.data;
   } catch (error) {
     console.error("Error fetching all templates via API:", error);
@@ -79,7 +89,8 @@ export const getAllTemplatesAPI = async () => {
 
 export const getTemplateByIdAPI = async (id) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/templates/${id}`);
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.get(`${API_BASE_URL}/api/templates/${id}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching template by ID ${id} via API:`, error);
@@ -89,7 +100,8 @@ export const getTemplateByIdAPI = async (id) => {
 
 export const updateTemplateAPI = async (id, templateData) => {
   try {
-    const response = await axios.put(`${API_BASE_URL}/templates/${id}`, templateData);
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.put(`${API_BASE_URL}/api/templates/${id}`, templateData);
     return response.data;
   } catch (error) {
     console.error(`Error updating template by ID ${id} via API:`, error);
@@ -99,7 +111,8 @@ export const updateTemplateAPI = async (id, templateData) => {
 
 export const deleteTemplateAPI = async (id) => {
   try {
-    const response = await axios.delete(`${API_BASE_URL}/templates/${id}`);
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.delete(`${API_BASE_URL}/api/templates/${id}`);
     return response.data; // Or handle 204 No Content response appropriately
   } catch (error) {
     console.error(`Error deleting template by ID ${id} via API:`, error);

@@ -15,11 +15,14 @@ import warp from "../assets/warp.png";
 import screenshot from "../assets/screenshot.png";
 import FadeIn from "../animations/FadeIn";
 import axios from "axios";
-import { getAllDiagramsAPI } from "../data/db"; // Fixed import path
+import { getAllDiagramsAPI, deleteDiagramAPI } from "../data/db"; // Fixed import path
 import { languages } from "../i18n/i18n";
 import { Tweet } from "react-tweet";
 import { socials } from "../data/socials";
 import { databases } from "../data/databases";
+import { useAuth } from "../context/AuthContext";
+import { Button, Tag, Popconfirm, Toast } from "@douyinfe/semi-ui";
+import { IconDelete } from "@douyinfe/semi-icons";
 
 function shortenNumber(number) {
   if (number < 1000) return number;
@@ -34,6 +37,7 @@ export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate(); // Initialize useNavigate
+  const { isAuthenticated, isMitAdmin, API_BASE_URL, loading } = useAuth();
 
   const handleDiagramClick = (diagramId) => {
     if (diagramId) {
@@ -50,6 +54,39 @@ export default function LandingPage() {
     navigate("/editor");
   };
 
+  const handleDeleteDiagram = async (diagramId, event) => {
+    event.stopPropagation(); // 防止觸發點擊事件
+    
+    try {
+      await deleteDiagramAPI(diagramId);
+      Toast.success('圖表刪除成功');
+      fetchDiagrams(); // 重新獲取圖表列表
+    } catch (error) {
+      console.error('Failed to delete diagram:', error);
+      Toast.error('刪除圖表失敗');
+    }
+  };
+
+  const fetchDiagrams = async () => {
+    try {
+      setIsLoading(true);
+      
+      console.log('Fetching diagrams...', { isAuthenticated, loading });
+      
+      // 使用修正過的 API 函數
+      const diagrams = await getAllDiagramsAPI();
+      console.log('Fetched diagrams:', diagrams);
+      setDiagrams(diagrams || []);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching diagrams:", err);
+      setError("Failed to load diagrams. Please try again later.");
+      setDiagrams([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -61,28 +98,17 @@ export default function LandingPage() {
       }
     };
 
-    const fetchDiagrams = async () => {
-      try {
-        setIsLoading(true);
-        const fetchedDiagrams = await getAllDiagramsAPI();
-        setDiagrams(fetchedDiagrams || []); // Ensure diagrams is always an array
-        setError(null); // Clear any previous error
-      } catch (err) {
-        console.error("Error fetching diagrams:", err);
-        setError("Failed to load diagrams. Please try again later.");
-        setDiagrams([]); // Clear diagrams on error
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     document.body.setAttribute("theme-mode", "light");
     document.title =
       "drawDB | Online database diagram editor and SQL generator";
 
     fetchStats();
-    fetchDiagrams();
-  }, []);
+    
+    // 只有在認證狀態穩定後才獲取圖表
+    if (!loading) {
+      fetchDiagrams();
+    }
+  }, [isAuthenticated, loading]); // 添加 loading 作為依賴項
 
   return (
     <div>
@@ -101,15 +127,22 @@ export default function LandingPage() {
           <div className="hidden md:block h-full bg-dots" />
           <div className="absolute left-12 w-[45%] top-[50%] translate-y-[-54%] md:left-[50%] md:translate-x-[-50%] p-8 md:p-3 md:w-full text-zinc-800">
             <FadeIn duration={0.75}>
-              {isLoading && <p className="text-center">Loading diagrams...</p>}
-              {error && <p className="text-center text-red-500">{error}</p>}
-              {!isLoading && !error && diagrams.length === 0 && (
+              {!isAuthenticated && (
+                <div className="text-center">
+                  <h2 className="text-2xl mt-1 font-medium mb-6">歡迎使用 DrawDB</h2>
+                  <p className="text-gray-600 mb-6">請登入以查看和管理您的圖表</p>
+                </div>
+              )}
+              
+              {isAuthenticated && isLoading && <p className="text-center">Loading diagrams...</p>}
+              {isAuthenticated && error && <p className="text-center text-red-500">{error}</p>}
+              {isAuthenticated && !isLoading && !error && diagrams.length === 0 && (
                 <div className="text-center">
                   <h2 className="text-2xl mt-1 font-medium mb-6">開始創建您的第一個圖表</h2>
                   <p className="text-gray-600 mb-6">還沒有任何圖表，點擊下方按鈕開始創建！</p>
                 </div>
               )}
-              {!isLoading && !error && diagrams.length > 0 && (
+              {isAuthenticated && !isLoading && !error && diagrams.length > 0 && (
                 <div className="max-w-2xl mx-auto bg-white shadow-lg rounded-lg border border-zinc-200">
                   <div className="px-6 py-3 border-b border-zinc-200 bg-gray-50 rounded-t-lg">
                     <div className="flex items-center justify-between">
@@ -158,8 +191,25 @@ export default function LandingPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="text-sm text-gray-400 flex-shrink-0 ml-4">
-                              {databases[diagram.databaseType]?.name ?? "Generic"}
+                            <div className="flex items-center space-x-2">
+                              <div className="text-sm text-gray-400 flex-shrink-0">
+                                {databases[diagram.databaseType]?.name ?? "Generic"}
+                              </div>
+                              {/* mitadmin 可以刪除任何圖表 */}
+                              {isMitAdmin && (
+                                <Popconfirm
+                                  title="確定要刪除此圖表嗎？"
+                                  content="此操作不可撤銷"
+                                  onConfirm={(event) => handleDeleteDiagram(diagram.id, event)}
+                                >
+                                  <Button
+                                    icon={<IconDelete />}
+                                    type="danger"
+                                    size="small"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </Popconfirm>
+                              )}
                             </div>
                           </div>
                         </li>
@@ -181,9 +231,13 @@ export default function LandingPage() {
               <button
                 onClick={handleNewDiagramClick}
                 className="inline-block py-3 text-white transition-all duration-300 rounded-full shadow-lg bg-sky-900 ps-7 pe-6 hover:bg-sky-800"
+                disabled={!isAuthenticated}
               >
                 新增圖表 <i className="bi bi-arrow-right ms-1"></i>
               </button>
+              {!isAuthenticated && (
+                <p className="text-sm text-gray-500 mt-2">請先登入以創建圖表</p>
+              )}
             </div>
           </div>
         </div>

@@ -5,37 +5,40 @@ import BugReport from "./pages/BugReport";
 import Templates from "./pages/Templates";
 import LandingPage from "./pages/LandingPage";
 import SettingsContextProvider from "./context/SettingsContext";
+import { AuthProvider } from "./context/AuthContext";
 import { useSettings } from "./hooks";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
   return (
-    <SettingsContextProvider>
-      <BrowserRouter>
-        <RestoreScroll />
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route
-            path="/editor"
-            element={
-              <ThemedPage>
-                <Editor />
-              </ThemedPage>
-            }
-          />
-          <Route
-            path="/bug-report"
-            element={
-              <ThemedPage>
-                <BugReport />
-              </ThemedPage>
-            }
-          />
-          <Route path="/templates" element={<Templates />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </SettingsContextProvider>
+    <AuthProvider>
+      <SettingsContextProvider>
+        <BrowserRouter>
+          <RestoreScroll />
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route
+              path="/editor"
+              element={
+                <ThemedPage>
+                  <Editor />
+                </ThemedPage>
+              }
+            />
+            <Route
+              path="/bug-report"
+              element={
+                <ThemedPage>
+                  <BugReport />
+                </ThemedPage>
+              }
+            />
+            <Route path="/templates" element={<Templates />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </SettingsContextProvider>
+    </AuthProvider>
   );
 }
 
