@@ -19,6 +19,7 @@ import { getAllDiagramsAPI } from "../data/db"; // Fixed import path
 import { languages } from "../i18n/i18n";
 import { Tweet } from "react-tweet";
 import { socials } from "../data/socials";
+import { databases } from "../data/databases";
 
 function shortenNumber(number) {
   if (number < 1000) return number;
@@ -42,6 +43,11 @@ export default function LandingPage() {
       console.error("Diagram ID is undefined. Cannot navigate.");
       // Optionally, show an error to the user via Toast or similar
     }
+  };
+
+  const handleNewDiagramClick = () => {
+    window.name = "new"; // Set window.name to indicate a new diagram should be created
+    navigate("/editor");
   };
 
   useEffect(() => {
@@ -95,40 +101,89 @@ export default function LandingPage() {
           <div className="hidden md:block h-full bg-dots" />
           <div className="absolute left-12 w-[45%] top-[50%] translate-y-[-54%] md:left-[50%] md:translate-x-[-50%] p-8 md:p-3 md:w-full text-zinc-800">
             <FadeIn duration={0.75}>
-              <h2 className="text-2xl mt-1 font-medium text-center mb-6">已儲存的圖表</h2>
               {isLoading && <p className="text-center">Loading diagrams...</p>}
               {error && <p className="text-center text-red-500">{error}</p>}
               {!isLoading && !error && diagrams.length === 0 && (
-                <p className="text-center">No diagrams found. Create one using the editor!</p>
+                <div className="text-center">
+                  <h2 className="text-2xl mt-1 font-medium mb-6">開始創建您的第一個圖表</h2>
+                  <p className="text-gray-600 mb-6">還沒有任何圖表，點擊下方按鈕開始創建！</p>
+                </div>
               )}
               {!isLoading && !error && diagrams.length > 0 && (
                 <div className="max-w-2xl mx-auto bg-white shadow-lg rounded-lg border border-zinc-200">
-                  <ul className="divide-y divide-zinc-200">
-                    {diagrams.map(diagram => (
-                      <li 
-                        key={diagram.id} 
-                        className="px-6 py-4 hover:bg-zinc-100 transition-colors duration-150 cursor-pointer"
-                        onClick={() => handleDiagramClick(diagram.id)}
-                      >
-                        <div className="font-semibold text-sky-700 text-lg">
-                          {diagram.name || "Untitled Diagram"}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Last Modified: {new Date(diagram.lastModified).toLocaleString()}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="px-6 py-3 border-b border-zinc-200 bg-gray-50 rounded-t-lg">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-800">已儲存的圖表</h3>
+                      <span className="text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+                        {diagrams.length} 個圖表
+                      </span>
+                    </div>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    <ul className="divide-y divide-zinc-200">
+                      {diagrams.map(diagram => (
+                        <li 
+                          key={diagram.id} 
+                          className="px-6 py-4 hover:bg-zinc-100 transition-colors duration-150 cursor-pointer"
+                          onClick={() => handleDiagramClick(diagram.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              {/* 資料庫類型圖示 */}
+                              {databases[diagram.databaseType]?.image && (
+                                <div className="p-1 bg-gray-100 rounded">
+                                  <img
+                                    src={databases[diagram.databaseType].image}
+                                    className="h-4 w-4 object-contain brightness-110 contrast-125"
+                                    alt={databases[diagram.databaseType].name + " icon"}
+                                    title={databases[diagram.databaseType].name}
+                                  />
+                                </div>
+                              )}
+                              {/* 如果沒有圖示，顯示預設圖示 */}
+                              {!databases[diagram.databaseType]?.image && (
+                                <div 
+                                  className="h-6 w-6 bg-gray-300 rounded flex items-center justify-center text-xs font-bold text-gray-600"
+                                  title="Generic Database"
+                                >
+                                  DB
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div className="font-semibold text-sky-700 text-lg truncate">
+                                  {diagram.name || "Untitled Diagram"}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Last Modified: {new Date(diagram.lastModified).toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-sm text-gray-400 flex-shrink-0 ml-4">
+                              {databases[diagram.databaseType]?.name ?? "Generic"}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {diagrams.length > 6 && (
+                    <div className="px-6 py-2 border-t border-zinc-200 bg-gray-50 rounded-b-lg">
+                      <div className="text-xs text-gray-500 text-center">
+                        <i className="bi bi-arrow-up-down mr-1"></i>
+                        滾動查看更多圖表
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </FadeIn>
             <div className="mt-4 font-semibold md:mt-12">
-              <Link
-                to="/editor"
+              <button
+                onClick={handleNewDiagramClick}
                 className="inline-block py-3 text-white transition-all duration-300 rounded-full shadow-lg bg-sky-900 ps-7 pe-6 hover:bg-sky-800"
               >
                 新增圖表 <i className="bi bi-arrow-right ms-1"></i>
-              </Link>
+              </button>
             </div>
           </div>
         </div>

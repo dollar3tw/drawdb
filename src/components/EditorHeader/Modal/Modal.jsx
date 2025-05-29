@@ -7,7 +7,7 @@ import {
 } from "@douyinfe/semi-ui";
 import { DB, MODAL, STATUS } from "../../../data/constants";
 import { useState } from "react";
-import { getDiagramByIdAPI } from "../../../data/db";
+import { getDiagramByIdAPI, getAllDiagramsAPI } from "../../../data/db";
 import {
   useAreas,
   useEnums,
@@ -52,6 +52,7 @@ export default function Modal({
   setModal,
   title,
   setTitle,
+  diagramId,
   setDiagramId,
   exportData,
   setExportData,
@@ -101,15 +102,15 @@ export default function Modal({
     await getDiagramByIdAPI(id)
       .then((diagram) => {
         if (diagram) {
-          if (diagram.database) {
-            setDatabase(diagram.database);
+          if (diagram.databaseType) {
+            setDatabase(diagram.databaseType);
           } else {
             setDatabase(DB.GENERIC);
           }
           setDiagramId(diagram.id);
           setTitle(diagram.name);
           setTables(diagram.tables);
-          setRelationships(diagram.references);
+          setRelationships(diagram.relationships);
           setAreas(diagram.areas);
           setNotes(diagram.notes);
           setTasks(diagram.todos ?? []);
@@ -119,10 +120,10 @@ export default function Modal({
           });
           setUndoStack([]);
           setRedoStack([]);
-          if (databases[database].hasTypes) {
+          if (databases[diagram.databaseType]?.hasTypes) {
             setTypes(diagram.types ?? []);
           }
-          if (databases[database].hasEnums) {
+          if (databases[diagram.databaseType]?.hasEnums) {
             setEnums(diagram.enums ?? []);
           }
           window.name = `d ${diagram.id}`;
@@ -238,12 +239,48 @@ export default function Modal({
         setModal(MODAL.NONE);
         return;
       case MODAL.RENAME:
-        setTitle(uncontrolledTitle);
-        setModal(MODAL.NONE);
+        // 檢查名稱重複
+        try {
+          const existingDiagrams = await getAllDiagramsAPI();
+          let finalTitle = uncontrolledTitle;
+          let counter = 1;
+          
+          // 檢查是否有重複的名稱（排除當前圖表）
+          while (existingDiagrams.some(d => d.name === finalTitle && d.id !== diagramId)) {
+            finalTitle = `${uncontrolledTitle} (${counter})`;
+            counter++;
+          }
+          
+          setTitle(finalTitle);
+          setModal(MODAL.NONE);
+        } catch (error) {
+          console.error("Error checking for duplicate names:", error);
+          // 如果檢查失敗，仍然設置原始標題
+          setTitle(uncontrolledTitle);
+          setModal(MODAL.NONE);
+        }
         return;
       case MODAL.SAVEAS:
-        setTitle(saveAsTitle);
-        setModal(MODAL.NONE);
+        // 檢查名稱重複
+        try {
+          const existingDiagrams = await getAllDiagramsAPI();
+          let finalTitle = saveAsTitle;
+          let counter = 1;
+          
+          // 檢查是否有重複的名稱
+          while (existingDiagrams.some(d => d.name === finalTitle)) {
+            finalTitle = `${saveAsTitle} (${counter})`;
+            counter++;
+          }
+          
+          setTitle(finalTitle);
+          setModal(MODAL.NONE);
+        } catch (error) {
+          console.error("Error checking for duplicate names:", error);
+          // 如果檢查失敗，仍然設置原始標題
+          setTitle(saveAsTitle);
+          setModal(MODAL.NONE);
+        }
         return;
       case MODAL.NEW:
         setModal(MODAL.NONE);

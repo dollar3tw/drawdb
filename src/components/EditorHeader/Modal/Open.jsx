@@ -70,8 +70,27 @@ export default function Open({ selectedDiagramId, setSelectedDiagramId }) {
                     }}
                   >
                     <td className="py-1">
-                      <i className="bi bi-file-earmark-text text-[16px] me-1 opacity-60" />
-                      {d.name}
+                      <div className="flex items-center space-x-2">
+                        {/* 資料庫類型圖示 */}
+                        {databases[d.databaseType]?.image && (
+                          <img
+                            src={databases[d.databaseType].image}
+                            className="h-4 w-4 object-contain brightness-110 contrast-125"
+                            alt={databases[d.databaseType].name + " icon"}
+                            title={databases[d.databaseType].name}
+                          />
+                        )}
+                        {/* 如果沒有圖示，顯示預設圖示 */}
+                        {!databases[d.databaseType]?.image && (
+                          <div 
+                            className="h-4 w-4 bg-gray-300 rounded flex items-center justify-center text-xs font-bold text-gray-600"
+                            title="Generic Database"
+                          >
+                            <i className="bi bi-file-earmark-text text-[12px] opacity-60" />
+                          </div>
+                        )}
+                        <span>{d.name}</span>
+                      </div>
                     </td>
                     <td className="py-1">
                       {d.lastModified.toLocaleDateString() +
@@ -80,7 +99,7 @@ export default function Open({ selectedDiagramId, setSelectedDiagramId }) {
                     </td>
                     <td className="py-1">{getDiagramSize(d)}</td>
                     <td className="py-1">
-                      {databases[d.database].name ?? "Generic"}
+                      {databases[d.databaseType]?.name ?? "Generic"}
                     </td>
                   </tr>
                 );

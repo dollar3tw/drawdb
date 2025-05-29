@@ -1518,6 +1518,7 @@ export default function ControlPanel({
         setExportData={setExportData}
         title={title}
         setTitle={setTitle}
+        diagramId={diagramId}
         setDiagramId={setDiagramId}
         setModal={setModal}
         importFrom={importFrom}
@@ -1762,11 +1763,7 @@ export default function ControlPanel({
               {databases[database].image && (
                 <img
                   src={databases[database].image}
-                  className="h-5"
-                  style={{
-                    filter:
-                      "opacity(0.4) drop-shadow(0 0 0 white) drop-shadow(0 0 0 white)",
-                  }}
+                  className="h-5 brightness-110 contrast-125"
                   alt={databases[database].name + " icon"}
                   title={databases[database].name + " diagram"}
                 />

@@ -47,6 +47,7 @@ export default function WorkSpace() {
   const [lastSaved, setLastSaved] = useState("");
   const [showSelectDbModal, setShowSelectDbModal] = useState(false);
   const [selectedDb, setSelectedDb] = useState("");
+  const [isNewDiagram, setIsNewDiagram] = useState(false); // 新增狀態來追蹤是否為新圖表
   const { layout } = useLayout();
   const { settings } = useSettings();
   const { types, setTypes } = useTypes();
@@ -100,6 +101,23 @@ export default function WorkSpace() {
         // searchParams.delete("shareId"); // Gist functionality removed
         // setSearchParams(searchParams); // Gist functionality removed
         if ((id === 0 && window.name === "") || op === "lt") { // Create new diagram
+          // 檢查名稱重複
+          const existingDiagrams = await getAllDiagramsAPI();
+          let finalTitle = title;
+          let counter = 1;
+          
+          // 檢查是否有重複的名稱
+          while (existingDiagrams.some(d => d.name === finalTitle)) {
+            finalTitle = `${title} (${counter})`;
+            counter++;
+          }
+          
+          // 如果名稱被修改了，更新 payload 和本地狀態
+          if (finalTitle !== title) {
+            diagramPayload.name = finalTitle;
+            setTitle(finalTitle);
+          }
+          
           const newDiagram = await createDiagramAPI(diagramPayload);
           setId(newDiagram.id);
           setTitle(newDiagram.name); // Backend might change the name slightly or confirm it
@@ -287,22 +305,50 @@ export default function WorkSpace() {
       }
     };
 
+    const createNewDiagram = () => {
+      // Create a new blank diagram
+      setId(0); // Set to 0 to indicate a new diagram
+      setTitle("Untitled diagram");
+      setTables([]);
+      setRelationships([]);
+      setAreas([]);
+      setNotes([]);
+      setTasks([]);
+      setTypes([]);
+      setEnums([]);
+      setTransform({ pan: { x: 0, y: 0 }, zoom: 1 });
+      setUndoStack([]);
+      setRedoStack([]);
+      setIsNewDiagram(true); // 標記為新圖表
+      window.name = ""; // Clear window.name after creating new diagram
+      if (selectedDb === "") setShowSelectDbModal(true); // Show DB selection if needed
+    };
+
     // All Gist/shareId related logic removed from load function.
     // The console.warn and searchParams.delete are also removed.
 
+    // 如果是新圖表且已經初始化過，不要重新載入
+    if (isNewDiagram) {
+      return;
+    }
+
     if (window.name === "") {
       await loadLatestDiagram();
+    } else if (window.name === "new") {
+      createNewDiagram();
     } else {
       const name = window.name.split(" ");
       const op = name[0];
       const id = parseInt(name[1]);
       switch (op) {
         case "d": {
+          setIsNewDiagram(false); // 載入現有圖表時重置新圖表標記
           await loadDiagram(id);
           break;
         }
         case "t":
         case "lt": {
+          setIsNewDiagram(false); // 載入模板時重置新圖表標記
           await loadTemplate(id);
           break;
         }
@@ -321,26 +367,11 @@ export default function WorkSpace() {
     setTypes,
     setTasks,
     setDatabase,
-    database,
     setEnums,
     selectedDb,
     setSaveState,
-    setTransform,
-    setRedoStack,
-    setUndoStack,
-    setRelationships,
-    setTables,
-    setAreas,
-    setNotes,
-    setTypes,
-    setTasks, // Though 'todos' seems unused with backend schema
-    setDatabase,
-    // database, // 'database' is in the dependency array already via setDatabase if it's from useDiagram()
-    setEnums,
-    selectedDb,
-    setSaveState,
-    // searchParams and setSearchParams are no longer needed here as shareId logic is fully removed
-    // Added missing state setters
+    isNewDiagram, // 新增依賴
+    // 移除重複的依賴
     setId, setTitle 
   ]);
 
@@ -425,15 +456,27 @@ export default function WorkSpace() {
       <Modal
         centered
         size="medium"
-        closable={false}
-        hasCancel={false}
+        closable={true}
+        hasCancel={true}
         title={t("pick_db")}
         okText={t("confirm")}
+        cancelText={t("cancel")}
         visible={showSelectDbModal}
         onOk={() => {
           if (selectedDb === "") return;
           setDatabase(selectedDb);
           setShowSelectDbModal(false);
+          // 如果是新圖表，確保不會觸發重新載入
+          if (isNewDiagram) {
+            // 資料庫已選擇，新圖表狀態保持
+            return;
+          }
+        }}
+        onCancel={() => {
+          setShowSelectDbModal(false);
+          // 取消時導航回主頁
+          window.name = "";
+          window.location.href = "/";
         }}
         okButtonProps={{ disabled: selectedDb === "" }}
       >
