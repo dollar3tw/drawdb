@@ -4,7 +4,7 @@ import { tableWidth } from "../data/constants";
 const defaultSettings = {
   strictMode: false,
   showFieldSummary: true,
-  showGrid: true,
+  showGrid: false,
   showDataTypes: true,
   mode: "light",
   autosave: true,

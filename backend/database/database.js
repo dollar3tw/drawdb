@@ -1,11 +1,38 @@
 const sqlite3 = require('sqlite3').verbose();
-const DB_PATH = './drawdb.sqlite'; // Database file will be created in the backend directory
+const path = require('path');
+const fs = require('fs');
 
-let db = new sqlite3.Database(DB_PATH, (err) => {
+const DB_PATH = path.join(__dirname, '..', 'drawdb.sqlite'); // Use absolute path
+
+// Ensure the directory exists and has proper permissions
+const dbDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true, mode: 0o755 });
+}
+
+let db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
   if (err) {
     console.error("Error opening database:", err.message);
   } else {
     console.log('Connected to the SQLite database.');
+    
+    // Set proper file permissions after creation
+    try {
+      fs.chmodSync(DB_PATH, 0o664);
+      console.log('Database file permissions set successfully.');
+    } catch (permErr) {
+      console.warn('Warning: Could not set database file permissions:', permErr.message);
+    }
+    
+    // Enable WAL mode for better concurrency
+    db.run("PRAGMA journal_mode=WAL;", (err) => {
+      if (err) {
+        console.warn("Warning: Could not enable WAL mode:", err.message);
+      } else {
+        console.log("WAL mode enabled for better concurrency.");
+      }
+    });
+    
     initDb(); // Call initialization after connection is established
   }
 });
