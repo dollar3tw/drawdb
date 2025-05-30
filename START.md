@@ -14,21 +14,21 @@ npm start
 
 服務將會：
 - 自動建置前端檔案
-- 啟動整合式後端服務
+- 啟動整合式服務
 - 在 http://localhost:3001 提供完整的 DrawDB 服務
 
 ## 開發模式
 
 如果您需要開發模式（自動重新載入）：
 ```bash
-npm run dev:full
+npm run dev:server
 ```
 
 ## 服務說明
 
 - **網站地址**: http://localhost:3001
 - **API 服務**: http://localhost:3001/api
-- **資料庫**: SQLite (backend/drawdb.sqlite)
+- **資料庫**: SQLite (database/drawdb.sqlite)
 - **預設管理員**: 
   - 使用者名稱: `mitadmin`
   - 密碼: `mitadmin123`

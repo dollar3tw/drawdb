@@ -3,8 +3,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const router = express.Router();
-const dbHelpers = require('../database/database');
-const { authenticateToken, requireMitAdmin, JWT_SECRET } = require('../middleware/auth');
+const dbHelpers = require('../database/database.cjs');
+const { authenticateToken, requireMitAdmin, JWT_SECRET } = require('../middleware/auth.cjs');
 
 // 用戶註冊
 router.post('/register', async (req, res) => {

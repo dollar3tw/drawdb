@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { getSessionByToken } = require('../database/database');
+const { getSessionByToken } = require('../database/database.cjs');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'drawdb-mit-secret-key-2024';
 

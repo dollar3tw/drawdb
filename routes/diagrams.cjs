@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const dbHelpers = require('../database/database');
-const { authenticateToken, optionalAuth, requireMitAdmin } = require('../middleware/auth');
+const { authenticateToken, optionalAuth, requireMitAdmin } = require('../middleware/auth.cjs');
+const dbHelpers = require('../database/database.cjs');
 
 // POST /api/diagrams - Create Diagram (需要認證)
 router.post('/', authenticateToken, async (req, res) => {

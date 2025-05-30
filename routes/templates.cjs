@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const dbHelpers = require('../database/database');
+const dbHelpers = require('../database/database.cjs');
 
 // POST /api/templates - Create Template
 router.post('/', async (req, res) => {

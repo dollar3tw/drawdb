@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const db = require('./database/database');
+const db = require('./database/database.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,22 +27,22 @@ function startApp() {
   app.use(express.json());
 
   // 記錄靜態檔案請求
-  app.use(express.static(path.join(__dirname, '../dist'), {
+  app.use(express.static(path.join(__dirname, 'dist'), {
     setHeaders: (res, path) => {
       if (path.endsWith('.html') || path.endsWith('.js') || path.endsWith('.css')) {
-        console.log(`📁 靜態檔案請求: GET ${path.replace(__dirname + '/../dist', '')}`);
+        console.log(`📁 靜態檔案請求: GET ${path.replace(__dirname + '/dist', '')}`);
       }
     }
   }));
 
   // API routes
-  const authRoutes = require('./routes/auth');
+  const authRoutes = require('./routes/auth.cjs');
   app.use('/api/auth', authRoutes);
 
-  const diagramRoutes = require('./routes/diagrams');
+  const diagramRoutes = require('./routes/diagrams.cjs');
   app.use('/api/diagrams', diagramRoutes);
 
-  const templateRoutes = require('./routes/templates');
+  const templateRoutes = require('./routes/templates.cjs');
   app.use('/api/templates', templateRoutes);
 
   // 所有非 API 路由都返回 index.html (用於 React Router)
@@ -53,7 +53,7 @@ function startApp() {
       return res.status(404).json({ message: 'API endpoint not found' });
     }
     // 否則返回前端應用
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+    res.sendFile(path.join(__dirname, 'dist/index.html'));
   });
 
   // 定期清理過期會話（每小時執行一次）
