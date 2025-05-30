@@ -11,12 +11,13 @@ import { getDiagramByIdAPI, getAllDiagramsAPI } from "../../../data/db";
 import {
   useAreas,
   useEnums,
+  useLayout,
   useNotes,
+  useSettings,
   useDiagram,
   useTransform,
   useTypes,
   useUndoRedo,
-  useTasks,
 } from "../../../hooks";
 import { saveAs } from "file-saver";
 import { Parser } from "node-sql-parser";
@@ -65,7 +66,6 @@ export default function Modal({
   const { setAreas } = useAreas();
   const { setTypes } = useTypes();
   const { setEnums } = useEnums();
-  const { setTasks } = useTasks();
   const { setTransform } = useTransform();
   const { setUndoStack, setRedoStack } = useUndoRedo();
   const [uncontrolledTitle, setUncontrolledTitle] = useState(title);
@@ -113,7 +113,6 @@ export default function Modal({
           setRelationships(diagram.relationships);
           setAreas(diagram.areas);
           setNotes(diagram.notes);
-          setTasks(diagram.todos ?? []);
           setTransform({
             pan: diagram.pan,
             zoom: diagram.zoom,

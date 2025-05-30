@@ -92,8 +92,7 @@ export const STATUS = {
 
 export const SIDESHEET = {
   NONE: 0,
-  TODO: 1,
-  TIMELINE: 2,
+  TIMELINE: 1,
 };
 
 export const DB = {

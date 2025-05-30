@@ -161,4 +161,58 @@ router.get('/user/:userId', authenticateToken, requireMitAdmin, async (req, res)
   }
 });
 
+// 獲取圖表的修訂歷程
+router.get('/:id/revisions', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 檢查圖表是否存在
+    const diagram = await dbHelpers.getDiagramById(id);
+    if (!diagram) {
+      return res.status(404).json({ error: '圖表不存在' });
+    }
+
+    // 獲取修訂歷程
+    const revisions = await dbHelpers.getRevisionHistoryByDiagramId(id);
+    res.json({ revisions });
+
+  } catch (error) {
+    console.error('Get revision history error:', error);
+    res.status(500).json({ error: '獲取修訂歷程失敗' });
+  }
+});
+
+// 添加修訂歷程記錄
+router.post('/:id/revisions', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, element, message } = req.body;
+    
+    // 檢查圖表是否存在
+    const diagram = await dbHelpers.getDiagramById(id);
+    if (!diagram) {
+      return res.status(404).json({ error: '圖表不存在' });
+    }
+
+    // 創建修訂歷程記錄
+    const revisionId = await dbHelpers.createRevisionHistory(
+      id,
+      req.user.id,
+      req.user.username,
+      action,
+      element,
+      message
+    );
+
+    res.status(201).json({ 
+      message: '修訂歷程記錄已創建',
+      revisionId 
+    });
+
+  } catch (error) {
+    console.error('Create revision history error:', error);
+    res.status(500).json({ error: '創建修訂歷程記錄失敗' });
+  }
+});
+
 module.exports = router;

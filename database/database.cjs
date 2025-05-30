@@ -139,6 +139,26 @@ const initDb = (callback = () => {}) => {
         return callback(err);
       }
       console.log("Table 'user_sessions' created or already exists.");
+    });
+
+    // Create revision history table
+    db.run(`CREATE TABLE IF NOT EXISTS revision_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      diagramId INTEGER NOT NULL,
+      userId INTEGER NOT NULL,
+      username TEXT NOT NULL,
+      action TEXT NOT NULL,
+      element TEXT NOT NULL,
+      message TEXT NOT NULL,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (diagramId) REFERENCES diagrams(id) ON DELETE CASCADE,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    )`, (err) => {
+      if (err) {
+        console.error("Error creating revision_history table:", err.message);
+        return callback(err);
+      }
+      console.log("Table 'revision_history' created or already exists.");
       callback(null); // Success
     });
   });
@@ -154,7 +174,6 @@ const parseDiagramRow = (row) => {
       row.notes = JSON.parse(row.notes);
       row.areas = JSON.parse(row.areas);
       row.pan = JSON.parse(row.pan);
-      row.todos = row.todos ? JSON.parse(row.todos) : [];
     } catch (e) {
       console.error("Error parsing JSON fields for row:", row.id, e);
       // Depending on desired behavior, you might want to set them to default values or re-throw
@@ -167,8 +186,8 @@ const parseDiagramRow = (row) => {
 
 async function createDiagram(data) {
   return new Promise((resolve, reject) => {
-    const sql = `INSERT INTO diagrams (name, databaseType, tables, relationships, notes, areas, pan, zoom, todos, userId, lastModified)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+    const sql = `INSERT INTO diagrams (name, databaseType, tables, relationships, notes, areas, pan, zoom, userId, lastModified)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
     const params = [
       data.name,
       data.databaseType,
@@ -178,7 +197,6 @@ async function createDiagram(data) {
       JSON.stringify(data.areas || []),
       JSON.stringify(data.pan || { x: 0, y: 0 }),
       data.zoom == null ? 1 : data.zoom, // Provide default for zoom if null/undefined
-      JSON.stringify(data.todos || []), // Add todos
       data.userId // Add userId parameter
     ];
     db.run(sql, params, function(err) {
@@ -265,10 +283,6 @@ async function updateDiagram(id, data) {
       fields.push("zoom = ?");
       params.push(data.zoom);
     }
-    if (data.todos !== undefined) {
-      fields.push("todos = ?");
-      params.push(JSON.stringify(data.todos));
-    }
 
     if (fields.length === 0) {
       // No fields to update, perhaps just fetch and return the current diagram
@@ -343,7 +357,11 @@ module.exports = {
   deleteExpiredSessions,
   // Diagram with User Functions
   getDiagramsByUserId,
-  deleteDiagramByAdmin
+  deleteDiagramByAdmin,
+  // Revision History Functions
+  createRevisionHistory,
+  getRevisionHistoryByDiagramId,
+  deleteRevisionHistoryByDiagramId
 };
 
 // Helper function to parse JSON fields for Templates
@@ -777,5 +795,57 @@ async function deleteDiagramByAdmin(diagramId, adminUserId) {
         console.error("Error checking admin authorization:", err.message);
         reject(err);
       });
+  });
+}
+
+// --- Revision History Functions ---
+
+async function createRevisionHistory(diagramId, userId, username, action, element, message) {
+  return new Promise((resolve, reject) => {
+    const sql = `INSERT INTO revision_history (diagramId, userId, username, action, element, message) VALUES (?, ?, ?, ?, ?, ?)`;
+    const params = [
+      diagramId,
+      userId,
+      username,
+      action,
+      element,
+      message
+    ];
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error("Error creating revision history:", err.message);
+        reject(err);
+      } else {
+        resolve(this.lastID);
+      }
+    });
+  });
+}
+
+async function getRevisionHistoryByDiagramId(diagramId) {
+  return new Promise((resolve, reject) => {
+    const sql = `SELECT * FROM revision_history WHERE diagramId = ? ORDER BY timestamp DESC`;
+    db.all(sql, [diagramId], (err, rows) => {
+      if (err) {
+        console.error("Error getting revision history by diagram id:", err.message);
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+}
+
+async function deleteRevisionHistoryByDiagramId(diagramId) {
+  return new Promise((resolve, reject) => {
+    const sql = `DELETE FROM revision_history WHERE diagramId = ?`;
+    db.run(sql, [diagramId], function(err) {
+      if (err) {
+        console.error("Error deleting revision history by diagram id:", err.message);
+        reject(err);
+      } else {
+        resolve(this.changes);
+      }
+    });
   });
 }

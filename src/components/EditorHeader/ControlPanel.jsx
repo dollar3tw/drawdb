@@ -1391,9 +1391,6 @@ export default function ControlPanel({
       },
     },
     settings: {
-      show_timeline: {
-        function: () => setSidesheet(SIDESHEET.TIMELINE),
-      },
       autosave: {
         state: settings.autosave ? (
           <i className="bi bi-toggle-on" />
@@ -1509,6 +1506,7 @@ export default function ControlPanel({
       <Sidesheet
         type={sidesheet}
         onClose={() => setSidesheet(SIDESHEET.NONE)}
+        diagramId={diagramId}
       />
     </>
   );
@@ -1669,12 +1667,12 @@ export default function ControlPanel({
               <IconSaveStroked size="extra-large" />
             </button>
           </Tooltip>
-          <Tooltip content={t("to_do")} position="bottom">
+          <Tooltip content={t("revision_history")} position="bottom">
             <button
               className="py-1 px-2 hover-2 rounded-sm text-xl -mt-0.5"
-              onClick={() => setSidesheet(SIDESHEET.TODO)}
+              onClick={() => setSidesheet(SIDESHEET.TIMELINE)}
             >
-              <i className="fa-regular fa-calendar-check" />
+              <i className="fa-regular fa-clock" />
             </button>
           </Tooltip>
           <Divider layout="vertical" margin="8px" />

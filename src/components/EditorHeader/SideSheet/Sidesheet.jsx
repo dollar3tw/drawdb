@@ -3,12 +3,10 @@ import { SIDESHEET } from "../../../data/constants";
 import { useSettings } from "../../../hooks";
 import timeLine from "../../../assets/process.png";
 import timeLineDark from "../../../assets/process_dark.png";
-import todo from "../../../assets/calendar.png";
-import Timeline from "./Timeline";
-import Todo from "./Todo";
+import RevisionHistory from "./Timeline";
 import { useTranslation } from "react-i18next";
 
-export default function Sidesheet({ type, onClose }) {
+export default function Sidesheet({ type, onClose, diagramId }) {
   const { t } = useTranslation();
   const { settings } = useSettings();
 
@@ -20,16 +18,9 @@ export default function Sidesheet({ type, onClose }) {
             <img
               src={settings.mode === "light" ? timeLine : timeLineDark}
               className="w-7"
-              alt="chat icon"
+              alt="revision history icon"
             />
-            <div className="ms-3 text-lg">{t("timeline")}</div>
-          </div>
-        );
-      case SIDESHEET.TODO:
-        return (
-          <div className="flex items-center">
-            <img src={todo} className="w-7" alt="todo icon" />
-            <div className="ms-3 text-lg">{t("to_do")}</div>
+            <div className="ms-3 text-lg">{t("revision_history")}</div>
           </div>
         );
       default:
@@ -40,9 +31,7 @@ export default function Sidesheet({ type, onClose }) {
   function getContent(type) {
     switch (type) {
       case SIDESHEET.TIMELINE:
-        return <Timeline />;
-      case SIDESHEET.TODO:
-        return <Todo />;
+        return <RevisionHistory diagramId={diagramId} />;
       default:
         break;
     }

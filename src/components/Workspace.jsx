@@ -23,9 +23,9 @@ import {
   useAreas,
   useNotes,
   useTypes,
-  useTasks,
   useSaveState,
   useEnums,
+  useRevisionHistory,
 } from "../hooks";
 import FloatingControls from "./FloatingControls";
 import { Modal, Tag } from "@douyinfe/semi-ui";
@@ -48,11 +48,11 @@ export default function WorkSpace() {
   const [showSelectDbModal, setShowSelectDbModal] = useState(false);
   const [selectedDb, setSelectedDb] = useState("");
   const [isNewDiagram, setIsNewDiagram] = useState(false); // 新增狀態來追蹤是否為新圖表
+  const [previousData, setPreviousData] = useState(null); // 新增狀態來追蹤上一次的資料
   const { layout } = useLayout();
   const { settings } = useSettings();
   const { types, setTypes } = useTypes();
   const { areas, setAreas } = useAreas();
-  const { tasks, setTasks } = useTasks();
   const { notes, setNotes } = useNotes();
   const { saveState, setSaveState } = useSaveState();
   const { transform, setTransform } = useTransform();
@@ -66,6 +66,7 @@ export default function WorkSpace() {
     setDatabase,
   } = useDiagram();
   const { undoStack, redoStack, setUndoStack, setRedoStack } = useUndoRedo();
+  const { recordRevision, recordDetailedRevision } = useRevisionHistory();
   const { t, i18n } = useTranslation();
   let [searchParams, setSearchParams] = useSearchParams();
   const handleResize = (e) => {
@@ -89,7 +90,6 @@ export default function WorkSpace() {
       relationships: relationships, // Renamed from 'references'
       notes: notes,
       areas: areas,
-      todos: tasks, // Add tasks to the payload
       pan: transform.pan,
       zoom: transform.zoom,
       ...(databases[database].hasEnums && { enums: enums }),
@@ -132,33 +132,41 @@ export default function WorkSpace() {
             setLastSaved(new Date(newDiagram.lastModified).toLocaleString());
             window.name = `d ${newDiagram.id}`;
             setSaveState(State.SAVED);
+            // 記錄修訂歷程
+            await recordRevision(newDiagram.id, 'CREATE', 'DIAGRAM', `創建圖表「${newDiagram.name}」`);
           } finally {
             window.savingInProgress = false;
           }
         } else { // Update existing diagram
+          // 準備當前資料用於比較
+          const currentData = {
+            tables: tables,
+            relationships: relationships,
+            notes: notes,
+            areas: areas,
+            enums: enums,
+            types: types
+          };
+          
           const updatedDiagram = await updateDiagramAPI(id, diagramPayload);
           // Backend returns the full updated diagram, could update other fields if necessary
           setLastSaved(new Date(updatedDiagram.lastModified).toLocaleString());
           setSaveState(State.SAVED);
+          
+          // 記錄詳細的修訂歷程
+          if (previousData) {
+            await recordDetailedRevision(updatedDiagram.id, previousData, currentData);
+          } else {
+            // 如果沒有上一次的資料，使用簡單的記錄
+            await recordRevision(updatedDiagram.id, 'UPDATE', 'DIAGRAM', `更新圖表「${updatedDiagram.name}」`);
+          }
+          
+          // 更新上一次的資料
+          setPreviousData(currentData);
         }
       } else { // Save as template (assuming 'op' corresponds to template operations)
-        // Construct template data - similar to diagram but might have different fields e.g. 'subjectAreas'
-        const templatePayload = {
-          databaseType: database,
-          title: title,
-          tables: tables,
-          relationships: relationships,
-          notes: notes,
-          subjectAreas: areas, // Field name for templates
-          // todos: tasks, // 'todos' is not in backend schema for templates
-          pan: transform.pan,
-          zoom: transform.zoom,
-          custom: 1, // Assuming custom templates are being saved
-          ...(databases[database].hasEnums && { enums: enums }),
-          ...(databases[database].hasTypes && { types: types }),
-        };
-        // Assuming 'id' here is the template ID for update operations
-        await updateTemplateAPI(id, templatePayload);
+        // const templatePayload = { ...diagramPayload, custom: 1 }; // Ensure it's marked as custom
+        // const updatedTemplate = await updateTemplateAPI(parseInt(name[1]), templatePayload);
         setSaveState(State.SAVED);
         setLastSaved(new Date().toLocaleString()); // updateTemplateAPI might not return lastModified
       }
@@ -175,7 +183,6 @@ export default function WorkSpace() {
     relationships,
     notes,
     areas,
-    tasks,
     transform,
     enums,
     types,
@@ -183,7 +190,10 @@ export default function WorkSpace() {
     setSaveState,
     setId,
     setTitle,
-    setLastSaved
+    setLastSaved,
+    recordRevision,
+    recordDetailedRevision,
+    previousData
   ]);
 
   const load = useCallback(async () => {
@@ -210,7 +220,6 @@ export default function WorkSpace() {
           setRelationships(d.relationships); // Note: field is relationships from backend
           setNotes(d.notes);
           setAreas(d.areas);
-          setTasks(d.todos || []); // Load todos into tasks state
           setTransform({ pan: d.pan, zoom: d.zoom });
           if (databases[d.databaseType].hasTypes) { // Use d.databaseType
             setTypes(d.types ?? []);
@@ -219,6 +228,16 @@ export default function WorkSpace() {
             setEnums(d.enums ?? []);
           }
           window.name = `d ${d.id}`;
+          
+          // 設定初始的 previousData
+          setPreviousData({
+            tables: d.tables,
+            relationships: d.relationships,
+            notes: d.notes,
+            areas: d.areas,
+            enums: d.enums ?? [],
+            types: d.types ?? []
+          });
         } else {
           window.name = "";
           if (selectedDb === "") setShowSelectDbModal(true);
@@ -248,7 +267,6 @@ export default function WorkSpace() {
           setRelationships(diagram.relationships); // Note: field is relationships
           setAreas(diagram.areas);
           setNotes(diagram.notes);
-          setTasks(diagram.todos || []); // Load todos into tasks state
           setTransform({
             pan: diagram.pan,
             zoom: diagram.zoom,
@@ -262,6 +280,16 @@ export default function WorkSpace() {
             setEnums(diagram.enums ?? []);
           }
           window.name = `d ${diagram.id}`;
+          
+          // 設定初始的 previousData
+          setPreviousData({
+            tables: diagram.tables,
+            relationships: diagram.relationships,
+            notes: diagram.notes,
+            areas: diagram.areas,
+            enums: diagram.enums ?? [],
+            types: diagram.types ?? []
+          });
         } else {
           window.name = ""; // Diagram not found
           setSaveState(State.FAILED_TO_LOAD); // Or specific error
@@ -323,7 +351,6 @@ export default function WorkSpace() {
       setRelationships([]);
       setAreas([]);
       setNotes([]);
-      setTasks([]);
       setTypes([]);
       setEnums([]);
       setTransform({ pan: { x: 0, y: 0 }, zoom: 1 });
@@ -375,14 +402,13 @@ export default function WorkSpace() {
     setAreas,
     setNotes,
     setTypes,
-    setTasks,
     setDatabase,
     setEnums,
     selectedDb,
     setSaveState,
     isNewDiagram, // 新增依賴
     // 移除重複的依賴
-    setId, setTitle 
+    setId, setTitle
   ]);
 
   useEffect(() => {
@@ -390,8 +416,7 @@ export default function WorkSpace() {
       tables?.length === 0 &&
       areas?.length === 0 &&
       notes?.length === 0 &&
-      types?.length === 0 &&
-      tasks?.length === 0
+      types?.length === 0
     )
       return;
 
@@ -407,9 +432,8 @@ export default function WorkSpace() {
     notes?.length,
     types?.length,
     relationships?.length,
-  tasks?.length, // Add tasks length to dependencies
-  transform.zoom, // Assuming zoom changes should trigger save
-  transform.pan, // Assuming pan changes should trigger save
+    transform.zoom, // Assuming zoom changes should trigger save
+    transform.pan, // Assuming pan changes should trigger save
     title,
     setSaveState,
   // Added other relevant state that should trigger autosave if changed
