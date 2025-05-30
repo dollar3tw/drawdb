@@ -17,7 +17,6 @@ import FadeIn from "../animations/FadeIn";
 import axios from "axios";
 import { getAllDiagramsAPI, deleteDiagramAPI } from "../data/db"; // Fixed import path
 import { languages } from "../i18n/i18n";
-import { Tweet } from "react-tweet";
 import { socials } from "../data/socials";
 import { databases } from "../data/databases";
 import { useAuth } from "../context/AuthContext";
@@ -37,7 +36,7 @@ export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate(); // Initialize useNavigate
-  const { isAuthenticated, isMitAdmin, API_BASE_URL, loading } = useAuth();
+  const { isAuthenticated, isMitAdmin, API_BASE_URL, loading, user } = useAuth();
 
   const handleDiagramClick = (diagramId) => {
     if (diagramId) {
@@ -71,7 +70,7 @@ export default function LandingPage() {
     try {
       setIsLoading(true);
       
-      console.log('Fetching diagrams...', { isAuthenticated, loading });
+      console.log('Fetching diagrams...', { isAuthenticated, loading, user });
       
       // 使用修正過的 API 函數
       const diagrams = await getAllDiagramsAPI();
@@ -103,12 +102,24 @@ export default function LandingPage() {
       "drawDB | Online database diagram editor and SQL generator";
 
     fetchStats();
+  }, []);
+
+  // 專門監聽認證狀態變更的 useEffect
+  useEffect(() => {
+    console.log('Auth state changed:', { isAuthenticated, loading, user });
     
-    // 只有在認證狀態穩定後才獲取圖表
-    if (!loading) {
+    // 只有在認證狀態穩定且已登入時才獲取圖表
+    if (!loading && isAuthenticated) {
+      console.log('User authenticated, fetching diagrams...');
       fetchDiagrams();
+    } else if (!loading && !isAuthenticated) {
+      // 如果用戶登出，清空圖表列表
+      console.log('User not authenticated, clearing diagrams...');
+      setDiagrams([]);
+      setIsLoading(false);
+      setError(null);
     }
-  }, [isAuthenticated, loading]); // 添加 loading 作為依賴項
+  }, [isAuthenticated, loading, user]); // 添加 user 作為依賴項
 
   return (
     <div>

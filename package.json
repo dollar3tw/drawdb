@@ -1,20 +1,16 @@
 {
-  "name": "client-vite",
+  "name": "drawdb",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "backend:dev": "cd backend && npm run dev",
-    "backend:start": "cd backend && npm start",
-    "backend:setup": "cd backend && npm install",
-    "full:setup": "npm install && npm run backend:setup",
-    "full:dev": "concurrently \"npm run dev\" \"npm run backend:dev\"",
-    "full:build": "npm run build && npm run backend:start",
-    "start": "npm run full:build"
+    "setup": "npm install && cd backend && npm install",
+    "start": "npm run build && cd backend && npm start",
+    "dev:full": "npm run build && cd backend && npm run dev"
   },
   "dependencies": {
     "@dbml/core": "^3.9.7-alpha.0",
