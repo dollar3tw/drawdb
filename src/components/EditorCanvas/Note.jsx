@@ -17,6 +17,8 @@ export default function Note({ data, onPointerDown }) {
   const fold = 24;
   const [editField, setEditField] = useState({});
   const [hovered, setHovered] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editingTitle, setEditingTitle] = useState("");
   const { layout } = useLayout();
   const { t } = useTranslation();
   const { setSaveState } = useSaveState();
@@ -82,6 +84,59 @@ export default function Note({ data, onPointerDown }) {
     );
   }, [selectedElement, data, bulkSelectedElements]);
 
+  const handleTitleDoubleClick = (e) => {
+    e.stopPropagation();
+    setIsEditingTitle(true);
+    setEditingTitle(data.title);
+  };
+
+  const handleTitleEdit = (value) => {
+    setEditingTitle(value);
+  };
+
+  const handleTitleConfirm = () => {
+    if (editingTitle.trim() === "") {
+      setEditingTitle(data.title);
+      setIsEditingTitle(false);
+      return;
+    }
+    
+    if (editingTitle !== data.title) {
+      setUndoStack((prev) => [
+        ...prev,
+        {
+          action: Action.EDIT,
+          element: ObjectType.NOTE,
+          nid: data.id,
+          undo: { title: data.title },
+          redo: { title: editingTitle },
+          message: t("edit_note", {
+            noteTitle: editingTitle,
+            extra: "[title]",
+          }),
+        },
+      ]);
+      setRedoStack([]);
+      updateNote(data.id, { title: editingTitle });
+    }
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleCancel = () => {
+    setEditingTitle(data.title);
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleTitleConfirm();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleTitleCancel();
+    }
+  };
+
   return (
     <g
       onPointerEnter={(e) => e.isPrimary && setHovered(true)}
@@ -143,9 +198,26 @@ export default function Note({ data, onPointerDown }) {
           <div className="flex justify-between gap-1 w-full">
             <label
               htmlFor={`note_${data.id}`}
-              className="ms-5 overflow-hidden text-ellipsis"
+              className="ms-5 overflow-hidden text-ellipsis cursor-pointer flex-1"
+              onDoubleClick={handleTitleDoubleClick}
             >
-              {data.title}
+              {isEditingTitle ? (
+                <Input
+                  value={editingTitle}
+                  onChange={handleTitleEdit}
+                  onBlur={handleTitleConfirm}
+                  onKeyDown={handleTitleKeyDown}
+                  autoFocus
+                  className="text-sm"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    border: '1px solid #3b82f6',
+                    borderRadius: '4px'
+                  }}
+                />
+              ) : (
+                data.title
+              )}
             </label>
             {(hovered ||
               (selectedElement.element === ObjectType.NOTE &&

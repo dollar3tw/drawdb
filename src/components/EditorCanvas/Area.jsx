@@ -22,6 +22,11 @@ export default function Area({
 }) {
   const ref = useRef(null);
   const isHovered = useHover(ref);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState("");
+  const { updateArea } = useAreas();
+  const { setUndoStack, setRedoStack } = useUndoRedo();
+  const { t } = useTranslation();
   const {
     pointer: {
       spaces: { diagram: pointer },
@@ -98,6 +103,59 @@ export default function Area({
     );
   }, [selectedElement, data, bulkSelectedElements]);
 
+  const handleNameDoubleClick = (e) => {
+    e.stopPropagation();
+    setIsEditingName(true);
+    setEditingName(data.name);
+  };
+
+  const handleNameEdit = (value) => {
+    setEditingName(value);
+  };
+
+  const handleNameConfirm = () => {
+    if (editingName.trim() === "") {
+      setEditingName(data.name);
+      setIsEditingName(false);
+      return;
+    }
+    
+    if (editingName !== data.name) {
+      setUndoStack((prev) => [
+        ...prev,
+        {
+          action: Action.EDIT,
+          element: ObjectType.AREA,
+          aid: data.id,
+          undo: { name: data.name },
+          redo: { name: editingName },
+          message: t("edit_area", {
+            areaName: editingName,
+            extra: "[name]",
+          }),
+        },
+      ]);
+      setRedoStack([]);
+      updateArea(data.id, { name: editingName });
+    }
+    setIsEditingName(false);
+  };
+
+  const handleNameCancel = () => {
+    setEditingName(data.name);
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleNameConfirm();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleNameCancel();
+    }
+  };
+
   return (
     <g ref={ref}>
       <foreignObject
@@ -119,8 +177,27 @@ export default function Area({
           style={{ backgroundColor: `${data.color}66` }}
         >
           <div className="flex justify-between gap-1 w-full">
-            <div className="text-color select-none overflow-hidden text-ellipsis">
-              {data.name}
+            <div 
+              className="text-color select-none overflow-hidden text-ellipsis cursor-pointer flex-1"
+              onDoubleClick={handleNameDoubleClick}
+            >
+              {isEditingName ? (
+                <Input
+                  value={editingName}
+                  onChange={handleNameEdit}
+                  onBlur={handleNameConfirm}
+                  onKeyDown={handleNameKeyDown}
+                  autoFocus
+                  className="text-sm"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    border: '1px solid #3b82f6',
+                    borderRadius: '4px'
+                  }}
+                />
+              ) : (
+                data.name
+              )}
             </div>
             {(isHovered || (areaIsOpen() && !layout.sidebar)) && (
               <Popover

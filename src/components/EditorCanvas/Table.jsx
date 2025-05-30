@@ -48,7 +48,9 @@ export default function Table(props) {
   );
 
   const height =
-    tableData.fields.length * tableFieldHeight + tableHeaderHeight + 7;
+    tableData.fields.length * tableFieldHeight + 
+    (tableData.comment && tableData.comment.trim() !== "" ? tableHeaderHeight + 20 : tableHeaderHeight) + 
+    7;
 
   const isSelected = useMemo(() => {
     return (
@@ -162,116 +164,128 @@ export default function Table(props) {
             style={{ backgroundColor: tableData.color }}
           />
           <div
-            className={`overflow-hidden font-bold h-[40px] flex justify-between items-center border-b border-gray-400 ${
+            className={`overflow-hidden font-bold flex flex-col justify-center border-b border-gray-400 ${
               settings.mode === "light" ? "bg-zinc-200" : "bg-zinc-900"
             }`}
+            style={{ 
+              minHeight: tableData.comment && tableData.comment.trim() !== "" ? "60px" : "40px"
+            }}
           >
-            <div 
-              className="px-3 overflow-hidden text-ellipsis whitespace-nowrap flex-1 cursor-pointer"
-              onDoubleClick={handleNameDoubleClick}
-            >
-              {isEditingName ? (
-                <Input
-                  value={editingName}
-                  onChange={handleNameEdit}
-                  onBlur={handleNameConfirm}
-                  onKeyDown={handleNameKeyDown}
-                  autoFocus
-                  className="h-8 text-sm font-bold"
-                  style={{ 
-                    backgroundColor: 'transparent',
-                    border: '1px solid #3b82f6',
-                    borderRadius: '4px'
-                  }}
-                />
-              ) : (
-                <span className="select-none">{tableData.name}</span>
-              )}
-            </div>
-            <div className="hidden group-hover:block">
-              <div className="flex justify-end items-center mx-2">
-                <Button
-                  icon={<IconEdit />}
-                  size="small"
-                  theme="solid"
-                  style={{
-                    backgroundColor: "#2f68adb3",
-                    marginRight: "6px",
-                  }}
-                  onClick={openEditor}
-                />
-                <Popover
-                  key={tableData.id}
-                  content={
-                    <div className="popover-theme">
-                      <div className="mb-2">
-                        <strong>{t("comment")}:</strong>{" "}
-                        {tableData.comment === "" ? (
-                          t("not_set")
-                        ) : (
-                          <div>{tableData.comment}</div>
-                        )}
-                      </div>
-                      <div>
-                        <strong
-                          className={`${
-                            tableData.indices.length === 0 ? "" : "block"
-                          }`}
-                        >
-                          {t("indices")}:
-                        </strong>{" "}
-                        {tableData.indices.length === 0 ? (
-                          t("not_set")
-                        ) : (
-                          <div>
-                            {tableData.indices.map((index, k) => (
-                              <div
-                                key={k}
-                                className={`flex items-center my-1 px-2 py-1 rounded ${
-                                  settings.mode === "light"
-                                    ? "bg-gray-100"
-                                    : "bg-zinc-800"
-                                }`}
-                              >
-                                <i className="fa-solid fa-thumbtack me-2 mt-1 text-slate-500"></i>
-                                <div>
-                                  {index.fields.map((f) => (
-                                    <Tag color="blue" key={f} className="me-1">
-                                      {f}
-                                    </Tag>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        icon={<IconDeleteStroked />}
-                        type="danger"
-                        block
-                        style={{ marginTop: "8px" }}
-                        onClick={() => deleteTable(tableData.id)}
-                      >
-                        {t("delete")}
-                      </Button>
-                    </div>
-                  }
-                  position="rightTop"
-                  showArrow
-                  trigger="click"
-                  style={{ width: "200px", wordBreak: "break-word" }}
+            <div className="flex justify-between items-start px-3 py-2">
+              <div className="flex-1 overflow-hidden">
+                <div 
+                  className="overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer"
+                  onDoubleClick={handleNameDoubleClick}
                 >
+                  {isEditingName ? (
+                    <Input
+                      value={editingName}
+                      onChange={handleNameEdit}
+                      onBlur={handleNameConfirm}
+                      onKeyDown={handleNameKeyDown}
+                      autoFocus
+                      className="h-8 text-sm font-bold"
+                      style={{ 
+                        backgroundColor: 'transparent',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '4px'
+                      }}
+                    />
+                  ) : (
+                    <span className="select-none font-bold">{tableData.name}</span>
+                  )}
+                </div>
+                {tableData.comment && tableData.comment.trim() !== "" && (
+                  <div className="text-xs text-gray-500 mt-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                    {tableData.comment}
+                  </div>
+                )}
+              </div>
+              <div className="hidden group-hover:block ml-2">
+                <div className="flex justify-end items-center">
                   <Button
-                    icon={<IconMore />}
-                    type="tertiary"
+                    icon={<IconEdit />}
                     size="small"
+                    theme="solid"
                     style={{
-                      backgroundColor: "#808080b3",
-                      color: "white",
+                      backgroundColor: "#2f68adb3",
+                      marginRight: "6px",
                     }}
+                    onClick={openEditor}
                   />
-                </Popover>
+                  <Popover
+                    key={tableData.id}
+                    content={
+                      <div className="popover-theme">
+                        <div className="mb-2">
+                          <strong>{t("comment")}:</strong>{" "}
+                          {tableData.comment === "" ? (
+                            t("not_set")
+                          ) : (
+                            <div>{tableData.comment}</div>
+                          )}
+                        </div>
+                        <div>
+                          <strong
+                            className={`${
+                              tableData.indices.length === 0 ? "" : "block"
+                            }`}
+                          >
+                            {t("indices")}:
+                          </strong>{" "}
+                          {tableData.indices.length === 0 ? (
+                            t("not_set")
+                          ) : (
+                            <div>
+                              {tableData.indices.map((index, k) => (
+                                <div
+                                  key={k}
+                                  className={`flex items-center my-1 px-2 py-1 rounded ${
+                                    settings.mode === "light"
+                                      ? "bg-gray-100"
+                                      : "bg-zinc-800"
+                                  }`}
+                                >
+                                  <i className="fa-solid fa-thumbtack me-2 mt-1 text-slate-500"></i>
+                                  <div>
+                                    {index.fields.map((f) => (
+                                      <Tag color="blue" key={f} className="me-1">
+                                        {f}
+                                      </Tag>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          icon={<IconDeleteStroked />}
+                          type="danger"
+                          block
+                          style={{ marginTop: "8px" }}
+                          onClick={() => deleteTable(tableData.id)}
+                        >
+                          {t("delete")}
+                        </Button>
+                      </div>
+                    }
+                    position="rightTop"
+                    showArrow
+                    trigger="click"
+                    style={{ width: "200px", wordBreak: "break-word" }}
+                  >
+                    <Button
+                      icon={<IconMore />}
+                      type="tertiary"
+                      size="small"
+                      style={{
+                        backgroundColor: "#808080b3",
+                        color: "white",
+                      }}
+                    />
+                  </Popover>
+                </div>
               </div>
             </div>
           </div>
@@ -327,17 +341,25 @@ export default function Table(props) {
                     </p>
                     <p>
                       <strong>{t("comment")}: </strong>
-                      {e.comment === "" ? t("not_set") : e.comment}
+                      {e.comment === "" ? (
+                        t("not_set")
+                      ) : (
+                        <div className="mt-1 p-2 bg-gray-50 rounded text-sm whitespace-pre-wrap break-words">
+                          {e.comment}
+                        </div>
+                      )}
                     </p>
                   </div>
                 }
                 position="right"
                 showArrow
-                style={
-                  isRtl(i18n.language)
+                style={{
+                  ...(isRtl(i18n.language)
                     ? { direction: "rtl" }
-                    : { direction: "ltr" }
-                }
+                    : { direction: "ltr" }),
+                  width: "300px",
+                  maxWidth: "400px"
+                }}
               >
                 {field(e, i)}
               </Popover>
@@ -372,13 +394,17 @@ export default function Table(props) {
   );
 
   function field(fieldData, index) {
+    const hasComment = fieldData.comment && fieldData.comment.trim() !== "";
+    const fieldHeight = tableFieldHeight; // 固定高度，因為現在是單行顯示
+    
     return (
       <div
         className={`${
           index === tableData.fields.length - 1
             ? ""
             : "border-b border-gray-400"
-        } group h-[36px] px-2 py-1 flex justify-between items-center gap-1 w-full overflow-hidden`}
+        } group px-2 py-1 flex justify-between items-center w-full overflow-hidden`}
+        style={{ height: `${fieldHeight}px` }}
         onPointerEnter={(e) => {
           if (!e.isPrimary) return;
 
@@ -406,7 +432,7 @@ export default function Table(props) {
         <div
           className={`${
             hoveredField === index ? "text-zinc-400" : ""
-          } flex items-center gap-2 overflow-hidden`}
+          } flex items-center gap-2 overflow-hidden flex-1`}
         >
           <button
             className="shrink-0 w-[10px] h-[10px] bg-[#2f68adcc] rounded-full"
@@ -421,54 +447,33 @@ export default function Table(props) {
                 startX: tableData.x + 15,
                 startY:
                   tableData.y +
-                  index * tableFieldHeight +
+                  index * fieldHeight +
                   tableHeaderHeight +
                   tableColorStripHeight +
                   12,
                 endX: tableData.x + 15,
                 endY:
                   tableData.y +
-                  index * tableFieldHeight +
+                  index * fieldHeight +
                   tableHeaderHeight +
                   tableColorStripHeight +
                   12,
               }));
             }}
           />
-          <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-            {fieldData.name}
-          </span>
+          <div className="flex items-center gap-2 overflow-hidden flex-1">
+            <span className="font-medium whitespace-nowrap">
+              {fieldData.name}
+            </span>
+            {hasComment && (
+              <span className="text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap">
+                - {fieldData.comment}
+              </span>
+            )}
+          </div>
         </div>
         <div className="text-zinc-400">
-          {hoveredField === index ? (
-            <Button
-              theme="solid"
-              size="small"
-              style={{
-                backgroundColor: "#d42020b3",
-              }}
-              icon={<IconMinus />}
-              onClick={() => deleteField(fieldData, tableData.id)}
-            />
-          ) : settings.showDataTypes ? (
-            <div className="flex gap-1 items-center">
-              {fieldData.primary && <IconKeyStroked />}
-              {!fieldData.notNull && <span className="font-mono">?</span>}
-              <span
-                className={
-                  "font-mono " + dbToTypes[database][fieldData.type].color
-                }
-              >
-                {fieldData.type +
-                  ((dbToTypes[database][fieldData.type].isSized ||
-                    dbToTypes[database][fieldData.type].hasPrecision) &&
-                  fieldData.size &&
-                  fieldData.size !== ""
-                    ? `(${fieldData.size})`
-                    : "")}
-              </span>
-            </div>
-          ) : null}
+          {/* 移除 hover 時的刪除按鈕 */}
         </div>
       </div>
     );
