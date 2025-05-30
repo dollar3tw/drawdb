@@ -338,36 +338,6 @@ export default function FieldDetails({ data, tid }) {
             />
           </div>
         )}
-      <div className="font-semibold">{t("comment")}</div>
-      <TextArea
-        className="my-2"
-        placeholder={t("comment")}
-        value={data.comment}
-        autosize
-        rows={2}
-        onChange={(value) => updateField(tid, data.id, { comment: value })}
-        onFocus={(e) => setEditField({ comment: e.target.value })}
-        onBlur={(e) => {
-          if (e.target.value === editField.comment) return;
-          setUndoStack((prev) => [
-            ...prev,
-            {
-              action: Action.EDIT,
-              element: ObjectType.TABLE,
-              component: "field",
-              tid: tid,
-              fid: data.id,
-              undo: editField,
-              redo: { comment: e.target.value },
-              message: t("edit_table", {
-                tableName: table.name,
-                extra: "[field]",
-              }),
-            },
-          ]);
-          setRedoStack([]);
-        }}
-      />
       <Button
         icon={<IconDeleteStroked />}
         type="danger"

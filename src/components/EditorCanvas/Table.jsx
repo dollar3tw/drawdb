@@ -13,16 +13,19 @@ import {
   IconDeleteStroked,
   IconKeyStroked,
 } from "@douyinfe/semi-icons";
-import { Popover, Tag, Button, SideSheet } from "@douyinfe/semi-ui";
-import { useLayout, useSettings, useDiagram, useSelect } from "../../hooks";
+import { Popover, Tag, Button, SideSheet, Input } from "@douyinfe/semi-ui";
+import { useLayout, useSettings, useDiagram, useSelect, useUndoRedo } from "../../hooks";
 import TableInfo from "../EditorSidePanel/TablesTab/TableInfo";
 import { useTranslation } from "react-i18next";
 import { dbToTypes } from "../../data/datatypes";
 import { isRtl } from "../../i18n/utils/rtl";
 import i18n from "../../i18n/i18n";
+import { Action } from "../../data/constants";
 
 export default function Table(props) {
   const [hoveredField, setHoveredField] = useState(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState("");
   const { database } = useDiagram();
   const {
     tableData,
@@ -32,11 +35,12 @@ export default function Table(props) {
     setLinkingLine,
   } = props;
   const { layout } = useLayout();
-  const { deleteTable, deleteField } = useDiagram();
+  const { deleteTable, deleteField, updateTable } = useDiagram();
   const { settings } = useSettings();
   const { t } = useTranslation();
   const { selectedElement, setSelectedElement, bulkSelectedElements } =
     useSelect();
+  const { setUndoStack, setRedoStack } = useUndoRedo();
 
   const borderColor = useMemo(
     () => (settings.mode === "light" ? "border-zinc-300" : "border-zinc-600"),
@@ -79,6 +83,60 @@ export default function Table(props) {
     }
   };
 
+  const handleNameDoubleClick = (e) => {
+    e.stopPropagation();
+    setIsEditingName(true);
+    setEditingName(tableData.name);
+  };
+
+  const handleNameEdit = (value) => {
+    setEditingName(value);
+  };
+
+  const handleNameConfirm = () => {
+    if (editingName.trim() === "") {
+      setEditingName(tableData.name);
+      setIsEditingName(false);
+      return;
+    }
+    
+    if (editingName !== tableData.name) {
+      setUndoStack((prev) => [
+        ...prev,
+        {
+          action: Action.EDIT,
+          element: ObjectType.TABLE,
+          component: "self",
+          tid: tableData.id,
+          undo: { name: tableData.name },
+          redo: { name: editingName },
+          message: t("edit_table", {
+            tableName: editingName,
+            extra: "[name]",
+          }),
+        },
+      ]);
+      setRedoStack([]);
+      updateTable(tableData.id, { name: editingName });
+    }
+    setIsEditingName(false);
+  };
+
+  const handleNameCancel = () => {
+    setEditingName(tableData.name);
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleNameConfirm();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleNameCancel();
+    }
+  };
+
   return (
     <>
       <foreignObject
@@ -91,7 +149,6 @@ export default function Table(props) {
         onPointerDown={onPointerDown}
       >
         <div
-          onDoubleClick={openEditor}
           className={`border-2 hover:border-dashed hover:border-blue-500
                select-none rounded-lg w-full ${
                  settings.mode === "light"
@@ -109,8 +166,27 @@ export default function Table(props) {
               settings.mode === "light" ? "bg-zinc-200" : "bg-zinc-900"
             }`}
           >
-            <div className=" px-3 overflow-hidden text-ellipsis whitespace-nowrap">
-              {tableData.name}
+            <div 
+              className="px-3 overflow-hidden text-ellipsis whitespace-nowrap flex-1 cursor-pointer"
+              onDoubleClick={handleNameDoubleClick}
+            >
+              {isEditingName ? (
+                <Input
+                  value={editingName}
+                  onChange={handleNameEdit}
+                  onBlur={handleNameConfirm}
+                  onKeyDown={handleNameKeyDown}
+                  autoFocus
+                  className="h-8 text-sm font-bold"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    border: '1px solid #3b82f6',
+                    borderRadius: '4px'
+                  }}
+                />
+              ) : (
+                <span className="select-none">{tableData.name}</span>
+              )}
             </div>
             <div className="hidden group-hover:block">
               <div className="flex justify-end items-center mx-2">

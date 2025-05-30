@@ -26,46 +26,15 @@ export default function TableInfo({ data }) {
 
   return (
     <div>
-      <div className="flex items-center mb-2.5">
-        <div className="text-md font-semibold break-keep">{t("name")}: </div>
-        <Input
-          value={data.name}
-          validateStatus={data.name.trim() === "" ? "error" : "default"}
-          placeholder={t("name")}
-          className="ms-2"
-          onChange={(value) => updateTable(data.id, { name: value })}
-          onFocus={(e) => setEditField({ name: e.target.value })}
-          onBlur={(e) => {
-            if (e.target.value === editField.name) return;
-            setUndoStack((prev) => [
-              ...prev,
-              {
-                action: Action.EDIT,
-                element: ObjectType.TABLE,
-                component: "self",
-                tid: data.id,
-                undo: editField,
-                redo: { name: e.target.value },
-                message: t("edit_table", {
-                  tableName: e.target.value,
-                  extra: "[name]",
-                }),
-              },
-            ]);
-            setRedoStack([]);
-          }}
-        />
-      </div>
-      
-      {/* 表格註解編輯 */}
-      <div className="mb-4">
-        <div className="text-sm font-medium mb-1 text-gray-600">{t("comment")}:</div>
+      {/* 表格註解編輯 - 合併成一行 */}
+      <div className="flex items-center mb-4 gap-2">
+        <div className="text-sm font-medium text-gray-600 whitespace-nowrap">{t("comment")}:</div>
         <TextArea
           value={data.comment || ""}
           autosize
           placeholder={t("comment")}
           rows={1}
-          className="text-sm"
+          className="text-sm flex-1"
           onChange={(value) =>
             updateTable(data.id, { comment: value }, false)
           }
