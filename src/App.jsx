@@ -1,13 +1,36 @@
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useLayoutEffect } from "react";
 import Editor from "./pages/Editor";
 import BugReport from "./pages/BugReport";
 import Templates from "./pages/Templates";
 import LandingPage from "./pages/LandingPage";
 import SettingsContextProvider from "./context/SettingsContext";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { useSettings } from "./hooks";
 import NotFound from "./pages/NotFound";
+import { Spin } from "@douyinfe/semi-ui";
+
+// 受保護的路由元件
+function ProtectedRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+
+  // 如果還在載入認證狀態，顯示載入畫面
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  // 如果未認證，重導向到首頁
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  // 如果已認證，顯示子元件
+  return children;
+}
 
 export default function App() {
   return (
@@ -20,9 +43,11 @@ export default function App() {
             <Route
               path="/editor"
               element={
-                <ThemedPage>
-                  <Editor />
-                </ThemedPage>
+                <ProtectedRoute>
+                  <ThemedPage>
+                    <Editor />
+                  </ThemedPage>
+                </ProtectedRoute>
               }
             />
             <Route

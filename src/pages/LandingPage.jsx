@@ -88,11 +88,17 @@ export default function LandingPage() {
 
   useEffect(() => {
     const fetchStats = async () => {
+      // 在開發環境中跳過 GitHub API 請求以避免 CORS 錯誤
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.log('開發環境：跳過 GitHub 統計資料請求');
+        return;
+      }
+      
       try {
         const res = await axios.get("https://api.github-star-counter.workers.dev/user/drawdb-io");
         setStats(res.data);
       } catch (err) {
-        console.error("Error fetching GitHub stats:", err);
+        console.log("GitHub 統計資料載入失敗，使用預設值");
         // Keep default stats or set to a specific error state if needed
       }
     };
