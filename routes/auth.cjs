@@ -80,14 +80,16 @@ router.post('/login', async (req, res) => {
     );
 
     // 創建會話記錄
-    const expiresAt = new Date();
+    const now = new Date();
+    const taipeiTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Taipei"}));
+    const expiresAt = new Date(taipeiTime);
     expiresAt.setDate(expiresAt.getDate() + 7); // 7天後過期
     
     await dbHelpers.createSession(user.id, token, expiresAt.toISOString());
 
     // 更新最後登入時間
     await dbHelpers.updateUser(user.id, { 
-      lastLogin: new Date().toISOString() 
+      lastLogin: taipeiTime.toISOString() 
     });
 
     // 移除密碼後返回用戶資訊
