@@ -134,7 +134,7 @@ export default function useRevisionHistory() {
       });
     }
     
-    return changes.length > 0 ? changes.join('；') : '更新圖表內容';
+    return changes.length > 0 ? changes.join('；') : null;
   };
 
   const recordRevision = async (diagramId, action, element, message) => {
@@ -161,6 +161,11 @@ export default function useRevisionHistory() {
     if (!diagramId || !user) return;
 
     const changeDescription = generateChangeDescription(prevData, currentData);
+    
+    // 只有在有實際變更時才記錄修訂歷程
+    if (!changeDescription) {
+      return;
+    }
     
     try {
       await axios.post(`${API_BASE_URL}/api/diagrams/${diagramId}/revisions`, {

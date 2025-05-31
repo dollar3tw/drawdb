@@ -154,12 +154,7 @@ export default function WorkSpace() {
           setSaveState(State.SAVED);
           
           // 記錄詳細的修訂歷程
-          if (previousData) {
-            await recordDetailedRevision(updatedDiagram.id, previousData, currentData);
-          } else {
-            // 如果沒有上一次的資料，使用簡單的記錄
-            await recordRevision(updatedDiagram.id, 'UPDATE', 'DIAGRAM', `更新圖表「${updatedDiagram.name}」`);
-          }
+          await recordDetailedRevision(updatedDiagram.id, previousData, currentData);
           
           // 更新上一次的資料
           setPreviousData(currentData);

@@ -54,17 +54,24 @@ export default function RevisionHistory({ diagramId }) {
     );
   }
 
-  // 合併本地 undoStack 和遠端修訂歷程
+  // 合併本地 undoStack 和遠端修訂歷程，並過濾掉移動操作
   const allRevisions = [
-    // 本地未儲存的操作
-    ...undoStack.map((item, index) => ({
-      id: `local-${index}`,
-      message: item.message,
-      username: '本地操作',
-      timestamp: new Date().toISOString(),
-      isLocal: true
-    })),
-    // 遠端已儲存的修訂歷程
+    // 本地未儲存的操作（過濾掉移動和平移操作）
+    ...undoStack
+      .filter(item => {
+        // 過濾掉移動操作和平移操作
+        if (item.action === 'MOVE' || item.action === 'PAN') return false;
+        if (item.message && (item.message.includes('移動') || item.message.includes('移動至'))) return false;
+        return true;
+      })
+      .map((item, index) => ({
+        id: `local-${index}`,
+        message: item.message,
+        username: '本地操作',
+        timestamp: new Date().toISOString(),
+        isLocal: true
+      })),
+    // 遠端已儲存的修訂歷程（已在後端過濾）
     ...revisions.map(revision => ({
       ...revision,
       isLocal: false
