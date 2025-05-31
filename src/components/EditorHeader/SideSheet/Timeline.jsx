@@ -1,12 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { useUndoRedo } from "../../../hooks";
 import { useAuth } from "../../../context/AuthContext";
+import { useDiagram } from "../../../hooks";
 import { List, Spin, Empty } from "@douyinfe/semi-ui";
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { generateDetailedMessage } from "../../../utils/revisionMessages";
 
 export default function RevisionHistory({ diagramId }) {
   const { undoStack } = useUndoRedo();
+  const { tables } = useDiagram();
   const { t } = useTranslation();
   const { API_BASE_URL } = useAuth();
   const [revisions, setRevisions] = useState([]);
@@ -64,13 +67,57 @@ export default function RevisionHistory({ diagramId }) {
         if (item.message && (item.message.includes('移動') || item.message.includes('移動至'))) return false;
         return true;
       })
-      .map((item, index) => ({
-        id: `local-${index}`,
-        message: item.message,
-        username: '本地操作',
-        timestamp: new Date().toISOString(),
-        isLocal: true
-      })),
+      .map((item, index) => {
+        // 生成詳細的訊息
+        let detailedMessage = item.message;
+        
+        try {
+          // 如果有足夠的資訊，生成詳細訊息
+          if (item.action !== undefined && item.element !== undefined && item.component) {
+            // 從 tables 中找到實際的表格名稱
+            let tableName = '未知表格';
+            if (item.tid !== undefined) {
+              const table = tables.find(t => t.id === item.tid);
+              tableName = table ? table.name : `table_${item.tid}`;
+            }
+            
+            // 從 undo/redo 中找到欄位名稱
+            let fieldName = '';
+            if (item.fid !== undefined && item.tid !== undefined) {
+              const table = tables.find(t => t.id === item.tid);
+              if (table) {
+                const field = table.fields.find(f => f.id === item.fid);
+                if (field) {
+                  fieldName = field.name;
+                } else if (item.undo && item.undo.name) {
+                  fieldName = item.undo.name;
+                } else if (item.redo && item.redo.name) {
+                  fieldName = item.redo.name;
+                }
+              }
+            }
+            
+            detailedMessage = generateDetailedMessage(item.action, item.element, item.component, {
+              tableName,
+              fieldName,
+              undo: item.undo,
+              redo: item.redo,
+              extra: item.extra
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to generate detailed message:', error);
+          // 如果生成詳細訊息失敗，使用原始訊息
+        }
+        
+        return {
+          id: `local-${index}`,
+          message: detailedMessage,
+          username: '本地操作',
+          timestamp: new Date().toISOString(),
+          isLocal: true
+        };
+      }),
     // 遠端已儲存的修訂歷程（已在後端過濾）
     ...revisions.map(revision => ({
       ...revision,
