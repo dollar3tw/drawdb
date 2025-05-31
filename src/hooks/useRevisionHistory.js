@@ -8,6 +8,11 @@ export default function useRevisionHistory() {
   const generateChangeDescription = (prevData, currentData) => {
     const changes = [];
     
+    // 如果 prevData 為 null 或 undefined，表示這是第一次儲存，不記錄變更
+    if (!prevData) {
+      return null;
+    }
+    
     // 檢查表格變更
     if (prevData.tables && currentData.tables) {
       const prevTables = prevData.tables || [];
@@ -38,6 +43,13 @@ export default function useRevisionHistory() {
             changes.push(`重新命名資料表「${prevTable.name}」為「${currentTable.name}」`);
           }
           
+          // 檢查表格註解變更
+          if ((prevTable.comment || '') !== (currentTable.comment || '')) {
+            const prevComment = prevTable.comment || '無註解';
+            const currentComment = currentTable.comment || '無註解';
+            changes.push(`修改資料表「${currentTable.name}」的註解：「${prevComment}」→「${currentComment}」`);
+          }
+          
           // 檢查欄位變更
           const prevFields = prevTable.fields || [];
           const currentFields = currentTable.fields || [];
@@ -62,11 +74,36 @@ export default function useRevisionHistory() {
           currentFields.forEach(currentField => {
             const prevField = prevFields.find(pf => pf.id === currentField.id);
             if (prevField) {
+              const fieldChanges = [];
+              
               if (prevField.name !== currentField.name) {
-                changes.push(`在資料表「${currentTable.name}」中重新命名欄位「${prevField.name}」為「${currentField.name}」`);
+                fieldChanges.push(`名稱：「${prevField.name}」→「${currentField.name}」`);
               }
               if (prevField.type !== currentField.type) {
-                changes.push(`修改資料表「${currentTable.name}」中欄位「${currentField.name}」的型別從「${prevField.type}」改為「${currentField.type}」`);
+                fieldChanges.push(`型別：「${prevField.type}」→「${currentField.type}」`);
+              }
+              if ((prevField.comment || '') !== (currentField.comment || '')) {
+                const prevComment = prevField.comment || '無註解';
+                const currentComment = currentField.comment || '無註解';
+                fieldChanges.push(`註解：「${prevComment}」→「${currentComment}」`);
+              }
+              if (prevField.notNull !== currentField.notNull) {
+                fieldChanges.push(`允許空值：${prevField.notNull ? '否' : '是'}→${currentField.notNull ? '否' : '是'}`);
+              }
+              if (prevField.primary !== currentField.primary) {
+                fieldChanges.push(`主鍵：${prevField.primary ? '是' : '否'}→${currentField.primary ? '是' : '否'}`);
+              }
+              if (prevField.unique !== currentField.unique) {
+                fieldChanges.push(`唯一值：${prevField.unique ? '是' : '否'}→${currentField.unique ? '是' : '否'}`);
+              }
+              if ((prevField.default || '') !== (currentField.default || '')) {
+                const prevDefault = prevField.default || '無預設值';
+                const currentDefault = currentField.default || '無預設值';
+                fieldChanges.push(`預設值：「${prevDefault}」→「${currentDefault}」`);
+              }
+              
+              if (fieldChanges.length > 0) {
+                changes.push(`修改資料表「${currentTable.name}」中欄位「${currentField.name}」的${fieldChanges.join('、')}`);
               }
             }
           });
@@ -111,6 +148,30 @@ export default function useRevisionHistory() {
       );
       deletedNotes.forEach(note => {
         changes.push(`刪除註解「${note.title || '無標題'}」`);
+      });
+      
+      // 修改的註解
+      currentNotes.forEach(currentNote => {
+        const prevNote = prevNotes.find(pn => pn.id === currentNote.id);
+        if (prevNote) {
+          const noteChanges = [];
+          
+          if ((prevNote.title || '') !== (currentNote.title || '')) {
+            const prevTitle = prevNote.title || '無標題';
+            const currentTitle = currentNote.title || '無標題';
+            noteChanges.push(`標題：「${prevTitle}」→「${currentTitle}」`);
+          }
+          
+          if ((prevNote.content || '') !== (currentNote.content || '')) {
+            const prevContent = prevNote.content || '無內容';
+            const currentContent = currentNote.content || '無內容';
+            noteChanges.push(`內容：「${prevContent}」→「${currentContent}」`);
+          }
+          
+          if (noteChanges.length > 0) {
+            changes.push(`修改註解「${currentNote.title || '無標題'}」的${noteChanges.join('、')}`);
+          }
+        }
       });
     }
     

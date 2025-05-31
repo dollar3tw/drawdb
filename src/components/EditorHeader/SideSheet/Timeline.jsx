@@ -44,14 +44,14 @@ export default function RevisionHistory({ diagramId }) {
         return '無效時間';
       }
       
-      return date.toLocaleString('zh-TW', {
+      // 使用用戶的本地時區顯示時間
+      return date.toLocaleString(navigator.language || 'zh-TW', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZone: 'Asia/Taipei',
         hour12: false // 使用24小時制
       });
     } catch (error) {
@@ -121,15 +121,14 @@ export default function RevisionHistory({ diagramId }) {
           // 如果生成詳細訊息失敗，使用原始訊息
         }
         
-        // 生成台北時間的時間戳記
+        // 生成當前系統時間的時間戳記
         const now = new Date();
-        const taipeiTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Taipei"}));
         
         return {
           id: `local-${index}`,
           message: detailedMessage,
           username: '本地操作',
-          timestamp: taipeiTime.toISOString(),
+          timestamp: now.toISOString(),
           isLocal: true
         };
       }),

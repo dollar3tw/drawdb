@@ -4,20 +4,15 @@ const fs = require('fs');
 
 const DB_PATH = path.join(__dirname, '..', 'drawdb.sqlite'); // Use absolute path
 
-// 設置時區為台北時間
-process.env.TZ = 'Asia/Taipei';
-
 // Ensure the directory exists and has proper permissions
 const dbDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true, mode: 0o755 });
 }
 
-// 獲取台北時間的 ISO 字符串
-const getTaipeiTimestamp = () => {
-  const now = new Date();
-  const taipeiTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Taipei"}));
-  return taipeiTime.toISOString();
+// 獲取當前系統時區的時間戳記
+const getCurrentTimestamp = () => {
+  return new Date().toISOString();
 };
 
 let db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
@@ -196,7 +191,7 @@ const parseDiagramRow = (row) => {
 
 async function createDiagram(data) {
   return new Promise((resolve, reject) => {
-    const taipeiTimestamp = getTaipeiTimestamp();
+    const currentTimestamp = getCurrentTimestamp();
     const sql = `INSERT INTO diagrams (name, databaseType, tables, relationships, notes, areas, pan, zoom, userId, lastModified)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const params = [
@@ -209,7 +204,7 @@ async function createDiagram(data) {
       JSON.stringify(data.pan || { x: 0, y: 0 }),
       data.zoom == null ? 1 : data.zoom, // Provide default for zoom if null/undefined
       data.userId, // Add userId parameter
-      taipeiTimestamp
+      currentTimestamp
     ];
     db.run(sql, params, function(err) {
       if (err) {
@@ -301,9 +296,9 @@ async function updateDiagram(id, data) {
       return getDiagramById(id).then(resolve).catch(reject);
     }
 
-    const taipeiTimestamp = getTaipeiTimestamp();
+    const currentTimestamp = getCurrentTimestamp();
     fields.push("lastModified = ?"); // Always update lastModified
-    params.push(taipeiTimestamp);
+    params.push(currentTimestamp);
 
     const sql = `UPDATE diagrams SET ${fields.join(", ")} WHERE id = ?`;
     params.push(id);
@@ -816,7 +811,7 @@ async function deleteDiagramByAdmin(diagramId, adminUserId) {
 
 async function createRevisionHistory(diagramId, userId, username, action, element, message) {
   return new Promise((resolve, reject) => {
-    const taipeiTimestamp = getTaipeiTimestamp();
+    const currentTimestamp = getCurrentTimestamp();
     const sql = `INSERT INTO revision_history (diagramId, userId, username, action, element, message, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)`;
     const params = [
       diagramId,
@@ -825,7 +820,7 @@ async function createRevisionHistory(diagramId, userId, username, action, elemen
       action,
       element,
       message,
-      taipeiTimestamp
+      currentTimestamp
     ];
     db.run(sql, params, function(err) {
       if (err) {
