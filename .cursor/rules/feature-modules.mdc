@@ -72,10 +72,11 @@ alwaysApply: false
 - 快速開始範例
 - 常見設計模式
 
-### 協作分享（需要後端）
+### 協作分享與認證
 API 相關：[src/api/](mdc:src/api/)
 
 #### 功能
+- 使用者認證與授權
 - 圖表分享連結
 - 即時協作編輯
 - 版本控制
@@ -157,14 +158,23 @@ API 相關：[src/api/](mdc:src/api/)
 
 ## 資料持久化
 
-### 本地儲存
-使用 Dexie.js 管理 IndexedDB
+### 伺服器端儲存
+使用 SQLite 資料庫進行持久化儲存
 
 #### 儲存內容
+- 使用者帳號資料
 - 圖表資料
-- 使用者設定
+- 模板資料
+- 會話資料
+
+### 前端暫存
+使用 React Context API 和本地狀態管理
+
+#### 暫存內容
+- 編輯中的圖表狀態
+- 使用者介面設定
 - 操作歷史
-- 暫存資料
+- 暫時性資料
 
 ### 設定管理
 實作於：[src/context/SettingsContext.jsx](mdc:src/context/SettingsContext.jsx)

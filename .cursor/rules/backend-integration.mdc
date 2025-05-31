@@ -1,120 +1,132 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
-# 後端整合指南
+# 整合式服務架構指南
 
-## 後端架構
+## 整合式架構
 
-### 後端目錄結構 [backend/](mdc:backend/)
-- **server.js** - Express 伺服器主檔案
-- **package.json** - 後端依賴管理
-- [backend/routes/](mdc:backend/routes/) - API 路由定義
-- [backend/database/](mdc:backend/database/) - 資料庫相關檔案
+### 服務結構
+- **server.cjs** - 整合式服務主檔案（Express 伺服器 + 靜態檔案服務）
+- **package.json** - 專案依賴管理
+- [routes/](mdc:routes) - API 路由定義
+- [database/](mdc:database) - 資料庫相關檔案
+- [middleware/](mdc:middleware) - Express 中介軟體
 - **drawdb.sqlite** - SQLite 資料庫檔案
 
 ### 資料庫
 - 使用 SQLite 作為主要資料庫
-- 資料庫檔案: `drawdb.sqlite`
+- 資料庫檔案: `database/drawdb.sqlite`
 - WAL 模式檔案: `drawdb.sqlite-wal`, `drawdb.sqlite-shm`
 
 ## 前後端通訊
 
 ### API 整合
 - 前端使用 Axios 進行 HTTP 請求
-- API 相關程式碼位於 [src/api/](mdc:src/api/) 目錄
-- 支援檔案分享和協作功能
+- API 相關程式碼位於 [src/api/](mdc:src/api) 目錄
+- 支援完整的使用者認證、圖表管理和分享功能
 
 ### 環境配置
-- 開發環境可以獨立運行前端（無需後端）
-- 生產環境需要配置後端服務以支援分享功能
-- 環境變數配置參考 `.env.sample`
+- 整合式服務同時提供前端和後端功能
+- 前端建置後由 Express 提供靜態檔案服務
+- API 端點位於 `/api/*` 路徑下
 
-### 分享功能
-- 需要後端支援的功能：
-  - 圖表分享
-  - 協作編輯
-  - 雲端儲存
+### 核心功能
+- 使用者認證與授權
+- 圖表 CRUD 操作
+- 模板管理
+- 檔案分享
+- 協作編輯
 
 ## 部署選項
 
-### 純前端部署
-- 適用於個人使用或不需要分享功能的場景
-- 可部署到靜態網站託管服務
-- 資料儲存在瀏覽器本地
-
-### 全棧部署
-- 包含前端和後端
+### 整合式部署（推薦）
+- 單一服務包含前後端所有功能
 - 支援完整的分享和協作功能
-- 可使用 Docker 進行容器化部署
+- 資料持久化儲存在 SQLite
 
 ### Docker 部署
-使用 [Dockerfile](mdc:Dockerfile) 和 [compose.yml](mdc:compose.yml)：
+使用 [Dockerfile](mdc:Dockerfile)：
 
 ```bash
 # 建置 Docker 映像
 docker build -t drawdb .
 
 # 運行容器
-docker run -p 3000:80 drawdb
-
-# 或使用 Docker Compose
-docker-compose up
+docker run -p 3001:3001 drawdb
 ```
 
 ## 開發模式
 
-### 前端獨立開發
+### 整合式開發
 ```bash
-npm run dev
-```
-- 前端運行在 http://localhost:5173
-- 不依賴後端服務
-- 適合 UI/UX 開發和功能測試
+# 安裝依賴
+npm run setup
 
-### 全棧開發
-1. 啟動後端服務：
-```bash
-cd backend
-npm install
-npm start
+# 開發模式（自動重新載入）
+npm run dev:server
 ```
-
-2. 啟動前端開發伺服器：
-```bash
-npm run dev
-```
+- 服務運行在 http://localhost:3001
+- 前端會自動建置並由同一服務提供
+- API 端點：http://localhost:3001/api
 
 ### 生產建置
 ```bash
+# 建置並啟動
 npm run build
+npm start
 ```
 - 建置結果輸出到 `dist/` 目錄
-- 可直接部署到 Web 伺服器
+- 整合服務同時提供前端和 API
 
 ## 資料流程
 
-### 本地資料
-- 使用 Dexie.js 管理 IndexedDB
-- 圖表資料儲存在瀏覽器本地
-- 支援匯入/匯出功能
+### 持久化資料
+- 使用 SQLite 儲存所有資料
+- 支援使用者、圖表、模板等資料
+- 自動會話管理和清理
 
-### 雲端資料（需要後端）
-- 透過 API 與後端通訊
-- 支援圖表分享和協作
-- 資料同步和版本控制
+### 前端資料管理
+- 使用 React Context API 管理狀態
+- 透過 API 與後端同步資料
+- 支援即時更新和協作
 
-## API 端點（後端服務）
+## API 端點
 
-### 檔案操作
-- 上傳圖表檔案
-- 下載分享的圖表
-- 檔案權限管理
+### 認證相關
+- `POST /api/auth/register` - 使用者註冊
+- `POST /api/auth/login` - 使用者登入
+- `POST /api/auth/logout` - 使用者登出
 
-### 分享功能
-- 生成分享連結
-- 存取權限控制
-- 協作編輯支援
+### 圖表管理
+- `GET /api/diagrams` - 獲取所有圖表
+- `POST /api/diagrams` - 創建新圖表
+- `GET /api/diagrams/:id` - 獲取特定圖表
+- `PUT /api/diagrams/:id` - 更新圖表
+- `DELETE /api/diagrams/:id` - 刪除圖表
 
-參考後端專案 [drawdb-server](https://github.com/drawdb-io/drawdb-server) 獲取完整的 API 文件。
+### 模板管理
+- `GET /api/templates` - 獲取所有模板
+- `POST /api/templates` - 創建新模板
+
+## 故障排除
+
+### 端口佔用
+```bash
+# 查看佔用端口的程序
+lsof -i :3001
+
+# 停止服務
+pkill -f "node server.cjs"
+
+# 使用其他端口
+PORT=3002 npm start
+```
+
+### 資料庫問題
+```bash
+# 重置資料庫（會清除所有資料）
+rm -f database/drawdb.sqlite*
+npm start
+```
