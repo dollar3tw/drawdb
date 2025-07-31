@@ -24,10 +24,11 @@ export const createDiagramAPI = async (diagramData) => {
   }
 };
 
-export const getAllDiagramsAPI = async () => {
+export const getAllDiagramsAPI = async (type = null) => {
   try {
     const API_BASE_URL = getApiBaseUrl();
-    const response = await axios.get(`${API_BASE_URL}/api/diagrams`);
+    const params = type ? { type } : {};
+    const response = await axios.get(`${API_BASE_URL}/api/diagrams`, { params });
     return response.data;
   } catch (error) {
     console.error("Error fetching all diagrams via API:", error);
@@ -64,6 +65,18 @@ export const deleteDiagramAPI = async (id) => {
     return response.data; // Or handle 204 No Content response appropriately
   } catch (error) {
     console.error(`Error deleting diagram by ID ${id} via API:`, error);
+    throw error;
+  }
+};
+
+// 提升圖表為協作狀態
+export const promoteDiagramToCollaborativeAPI = async (id) => {
+  try {
+    const API_BASE_URL = getApiBaseUrl();
+    const response = await axios.put(`${API_BASE_URL}/api/diagrams/${id}/promote`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error promoting diagram by ID ${id} to collaborative:`, error);
     throw error;
   }
 };

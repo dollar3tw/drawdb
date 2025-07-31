@@ -90,10 +90,15 @@ router.delete('/:id/permissions/:userId', authenticateToken, checkDiagramPermiss
   }
 });
 
-// PUT /api/diagrams/:id/promote - Root 提升圖表為共編狀態
-router.put('/:id/promote', authenticateToken, requireRoot, logCollaborationHistory('promote', 'diagram'), async (req, res) => {
+// PUT /api/diagrams/:id/promote - 圖表擁有者或 Root 可以提升圖表為共編狀態
+router.put('/:id/promote', authenticateToken, checkDiagramPermission, logCollaborationHistory('promote', 'diagram'), async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // 只有擁有者或 root 可以提升圖表
+    if (req.permission.type !== 'owner' && req.permission.type !== 'root') {
+      return res.status(403).json({ error: '只有圖表擁有者可以提升為協作狀態' });
+    }
     
     // 檢查圖表是否存在
     const diagram = await db.getDiagramById(id);

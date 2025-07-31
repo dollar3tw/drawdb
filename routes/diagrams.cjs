@@ -27,19 +27,31 @@ router.post('/', authenticateToken, async (req, res) => {
 router.get('/', optionalAuth, async (req, res) => {
   try {
     let diagrams;
+    const { type } = req.query; // 'personal' or 'collaborative'
     
     console.log('GET /api/diagrams - req.user:', req.user); // 調試日誌
+    console.log('GET /api/diagrams - type:', type); // 調試日誌
     
     if (req.user) {
-      // 如果用戶已登入，根據角色返回不同的圖表
-      if (req.user.role === 'root') {
-        // root 可以看到所有圖表
-        diagrams = await dbHelpers.getAllDiagrams();
+      if (type === 'personal') {
+        // 只返回個人圖表（擁有者且非協作）
+        const allDiagrams = await dbHelpers.getUserDiagramsByPermission(req.user.id);
+        diagrams = allDiagrams.filter(d => d.permission_type === 'owner' && !d.is_collaborative);
+      } else if (type === 'collaborative') {
+        // 返回協作圖表（使用者有權限的協作圖表或有編輯權限的圖表）
+        const allDiagrams = await dbHelpers.getUserDiagramsByPermission(req.user.id);
+        diagrams = allDiagrams.filter(d => d.is_collaborative || d.permission_type === 'editor');
       } else {
-        // 其他用戶只能看到自己有權限的圖表
-        console.log('Getting diagrams for user:', req.user.id); // 調試日誌
-        diagrams = await dbHelpers.getUserDiagramsByPermission(req.user.id);
-        console.log('Found diagrams:', diagrams.length); // 調試日誌
+        // 默認返回所有有權限的圖表
+        if (req.user.role === 'root') {
+          // root 可以看到所有圖表
+          diagrams = await dbHelpers.getAllDiagrams();
+        } else {
+          // 其他用戶只能看到自己有權限的圖表
+          console.log('Getting diagrams for user:', req.user.id); // 調試日誌
+          diagrams = await dbHelpers.getUserDiagramsByPermission(req.user.id);
+          console.log('Found diagrams:', diagrams.length); // 調試日誌
+        }
       }
     } else {
       // 未登入用戶返回空數組或公共圖表

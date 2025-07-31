@@ -85,6 +85,7 @@ import { socials } from "../../data/socials";
 import { toDBML } from "../../utils/exportAs/dbml";
 // import { exportSavedData } from "../../utils/exportSavedData"; // Functionality removed
 import { nanoid } from "nanoid";
+import { useAuth } from "../../context/AuthContext";
 
 export default function ControlPanel({
   diagramId,
@@ -92,6 +93,8 @@ export default function ControlPanel({
   title,
   setTitle,
   lastSaved,
+  setLastSaved,
+  isCollaborative = false, // 新增 prop 來判斷是否為協作圖表
 }) {
   const [modal, setModal] = useState(MODAL.NONE);
   const [sidesheet, setSidesheet] = useState(SIDESHEET.NONE);
@@ -131,6 +134,7 @@ export default function ControlPanel({
   const { t, i18n } = useTranslation();
   // const { setGistId } = useContext(IdContext); // Gist IdContext removed
   const navigate = useNavigate();
+  const { isRoot } = useAuth();
 
   const invertLayout = (component) =>
     setLayout((prev) => ({ ...prev, [component]: !prev[component] }));
@@ -703,25 +707,11 @@ export default function ControlPanel({
     setLayout((prev) => ({ ...prev, dbmlEditor: !prev.dbmlEditor }));
   };
   const save = () => setSaveState(State.SAVING);
-  const open = () => setModal(MODAL.OPEN);
   const saveDiagramAs = () => setModal(MODAL.SAVEAS);
   const fullscreen = useFullscreen();
 
   const menu = {
     file: {
-      new: {
-        function: () => setModal(MODAL.NEW),
-      },
-      new_window: {
-        function: () => {
-          const newWindow = window.open("/editor", "_blank");
-          newWindow.name = window.name;
-        },
-      },
-      open: {
-        function: open,
-        shortcut: "Ctrl+O",
-      },
       save: {
         function: save,
         shortcut: "Ctrl+S",
@@ -730,74 +720,46 @@ export default function ControlPanel({
         function: saveDiagramAs,
         shortcut: "Ctrl+Shift+S",
       },
-      save_as_template: {
-        function: async () => {
-          const templateData = {
-            title: title, // Using current diagram title
-            databaseType: database,
-            tables: tables,
-            relationships: relationships,
-            notes: notes,
-            subjectAreas: areas, // Mapping 'areas' from diagram state to 'subjectAreas' for template
-            pan: transform.pan,
-            zoom: transform.zoom,
-            custom: 1,
-            ...(databases[database]?.hasEnums && { enums: enums }),
-            ...(databases[database]?.hasTypes && { types: types }),
-          };
-          try {
-            const newTemplate = await createTemplateAPI(templateData);
-            if (newTemplate && newTemplate.id) {
-              Toast.success(t("template_saved"));
-              // Optionally, if you want to load this new template:
-              // setDiagramId(newTemplate.id); // This might be confusing as it's a template ID
-              // window.name = `t ${newTemplate.id}`;
-              // navigate(0); // To force a reload with new window.name
-            } else {
-              Toast.error(t("failed_to_save_template"));
-            }
-          } catch (error) {
-            console.error("Failed to save as template:", error);
-            Toast.error(t("failed_to_save_template"));
-          }
-        },
-      },
       rename: {
         function: () => {
           setModal(MODAL.RENAME);
         },
       },
-      delete_diagram: {
-        warning: {
-          title: t("delete_diagram"),
-          message: t("are_you_sure_delete_diagram"),
-        },
-        function: async () => {
-          if (!diagramId) { // Prevent deletion if no diagram is loaded
-            Toast.error(t("no_diagram_selected"));
-            return;
-          }
-          try {
-            await deleteDiagramAPI(diagramId);
-            Toast.success(t("diagram_deleted"));
-            // Reset workspace state
-            setDiagramId(0); // Assuming 0 means no diagram is loaded or new diagram state
-            setTitle("Untitled diagram");
-              setTables([]);
-              setRelationships([]);
-              setAreas([]);
-              setNotes([]);
-              setTypes([]);
-              setEnums([]);
-              setUndoStack([]);
-              setRedoStack([]);
-              window.name = ""; // Clear window.name to signify no specific diagram is loaded
-            } catch (error) {
-              console.error("Failed to delete diagram:", error);
-              Toast.error(t("failed_to_delete_diagram"));
+      // 只有個人圖表（非協作圖表）才能刪除
+      ...((!isCollaborative) && {
+        delete_diagram: {
+          warning: {
+            title: t("delete_diagram"),
+            message: t("are_you_sure_delete_diagram"),
+          },
+          function: async () => {
+            if (!diagramId) { // Prevent deletion if no diagram is loaded
+              Toast.error(t("no_diagram_selected"));
+              return;
             }
+            try {
+              await deleteDiagramAPI(diagramId);
+              Toast.success(t("diagram_deleted"));
+              // Reset workspace state
+              setDiagramId(0); // Assuming 0 means no diagram is loaded or new diagram state
+              setTitle("Untitled diagram");
+                setTables([]);
+                setRelationships([]);
+                setAreas([]);
+                setNotes([]);
+                setTypes([]);
+                setEnums([]);
+                setUndoStack([]);
+                setRedoStack([]);
+                window.name = ""; // Clear window.name to signify no specific diagram is loaded
+                navigate("/"); // 刪除後返回首頁
+              } catch (error) {
+                console.error("Failed to delete diagram:", error);
+                Toast.error(t("failed_to_delete_diagram"));
+              }
+          },
         },
-      },
+      }),
       import_from: {
         children: [
           {
@@ -1442,7 +1404,6 @@ export default function ControlPanel({
   useHotkeys("mod+z", undo, { preventDefault: true });
   useHotkeys("mod+y", redo, { preventDefault: true });
   useHotkeys("mod+s", save, { preventDefault: true });
-  useHotkeys("mod+o", open, { preventDefault: true });
   useHotkeys("mod+e", edit, { preventDefault: true });
   useHotkeys("mod+d", duplicate, { preventDefault: true });
   useHotkeys("mod+c", copy, { preventDefault: true });

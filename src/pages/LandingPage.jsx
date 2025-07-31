@@ -1,42 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
 import SimpleCanvas from "../components/SimpleCanvas";
 import Navbar from "../components/Navbar";
 import { diagram } from "../data/heroDiagram";
-import mysql_icon from "../assets/mysql.png";
-import postgres_icon from "../assets/postgres.png";
-import sqlite_icon from "../assets/sqlite.png";
-import mariadb_icon from "../assets/mariadb.png";
-import oraclesql_icon from "../assets/oraclesql.png";
-import sql_server_icon from "../assets/sql-server.png";
-import discord from "../assets/discord.png";
-import github from "../assets/github.png";
-import warp from "../assets/warp.png";
-import screenshot from "../assets/screenshot.png";
 import FadeIn from "../animations/FadeIn";
 import axios from "axios";
-import { getAllDiagramsAPI, deleteDiagramAPI } from "../data/db"; // Fixed import path
-import { languages } from "../i18n/i18n";
+import { getAllDiagramsAPI, deleteDiagramAPI, promoteDiagramToCollaborativeAPI } from "../data/db"; // Fixed import path
 import { socials } from "../data/socials";
 import { databases } from "../data/databases";
 import { useAuth } from "../context/AuthContext";
-import { Button, Tag, Popconfirm, Toast } from "@douyinfe/semi-ui";
-import { IconDelete } from "@douyinfe/semi-icons";
+import { Toast, Tabs, TabPane, Badge } from "@douyinfe/semi-ui";
+import { IconUserGroup } from "@douyinfe/semi-icons";
+import DiagramListItem from "../components/DiagramListItem";
+import InviteCollaboratorModal from "../components/InviteCollaboratorModal";
 
-function shortenNumber(number) {
-  if (number < 1000) return number;
-
-  if (number >= 1000 && number < 1_000_000)
-    return `${(number / 1000).toFixed(1)}k`;
-}
 
 export default function LandingPage() {
-  const [stats, setStats] = useState({ stars: 18000, forks: 1200 });
-  const [diagrams, setDiagrams] = useState([]);
+  const [personalDiagrams, setPersonalDiagrams] = useState([]);
+  const [collaborativeDiagrams, setCollaborativeDiagrams] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('collaborative');
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [selectedDiagramForInvite, setSelectedDiagramForInvite] = useState(null);
   const navigate = useNavigate(); // Initialize useNavigate
-  const { isAuthenticated, isMitAdmin, API_BASE_URL, loading, user } = useAuth();
+  const { isAuthenticated, isRoot, loading, user } = useAuth();
 
   const handleDiagramClick = (diagramId) => {
     if (diagramId) {
@@ -66,48 +54,59 @@ export default function LandingPage() {
     }
   };
 
-  const fetchDiagrams = async () => {
+  const handlePromoteDiagram = async (diagramId, event) => {
+    event.stopPropagation(); // 防止觸發點擊事件
+    
+    try {
+      await promoteDiagramToCollaborativeAPI(diagramId);
+      Toast.success('圖表已提升為協作狀態');
+      
+      // 重新獲取圖表列表
+      await fetchDiagrams();
+    } catch (error) {
+      console.error('Error promoting diagram:', error);
+      Toast.error('提升圖表失敗');
+    }
+  };
+  
+  const handleInviteCollaborator = (diagramId) => {
+    const diagram = [...personalDiagrams, ...collaborativeDiagrams].find(d => d.id === diagramId);
+    setSelectedDiagramForInvite(diagram);
+    setInviteModalVisible(true);
+  };
+
+  const fetchDiagrams = useCallback(async () => {
     try {
       setIsLoading(true);
       
       console.log('Fetching diagrams...', { isAuthenticated, loading, user });
       
-      // 使用修正過的 API 函數
-      const diagrams = await getAllDiagramsAPI();
-      console.log('Fetched diagrams:', diagrams);
-      setDiagrams(diagrams || []);
+      // 同時獲取個人和協作圖表
+      const [personal, collaborative] = await Promise.all([
+        getAllDiagramsAPI('personal'),
+        getAllDiagramsAPI('collaborative')
+      ]);
+      
+      console.log('Fetched personal diagrams:', personal);
+      console.log('Fetched collaborative diagrams:', collaborative);
+      
+      setPersonalDiagrams(personal || []);
+      setCollaborativeDiagrams(collaborative || []);
       setError(null);
     } catch (err) {
       console.error("Error fetching diagrams:", err);
       setError("Failed to load diagrams. Please try again later.");
-      setDiagrams([]);
+      setPersonalDiagrams([]);
+      setCollaborativeDiagrams([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      // 在開發環境中跳過 GitHub API 請求以避免 CORS 錯誤
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        console.log('開發環境：跳過 GitHub 統計資料請求');
-        return;
-      }
-      
-      try {
-        const res = await axios.get("https://api.github-star-counter.workers.dev/user/drawdb-io");
-        setStats(res.data);
-      } catch (err) {
-        console.log("GitHub 統計資料載入失敗，使用預設值");
-        // Keep default stats or set to a specific error state if needed
-      }
-    };
-
     document.body.setAttribute("theme-mode", "light");
     document.title =
       "drawDB | Online database diagram editor and SQL generator";
-
-    fetchStats();
   }, []);
 
   // 專門監聽認證狀態變更的 useEffect
@@ -121,11 +120,12 @@ export default function LandingPage() {
     } else if (!loading && !isAuthenticated) {
       // 如果用戶登出，清空圖表列表
       console.log('User not authenticated, clearing diagrams...');
-      setDiagrams([]);
+      setPersonalDiagrams([]);
+      setCollaborativeDiagrams([]);
       setIsLoading(false);
       setError(null);
     }
-  }, [isAuthenticated, loading, user]); // 添加 user 作為依賴項
+  }, [isAuthenticated, loading, user, fetchDiagrams]); // 添加 user 作為依賴項
 
   return (
     <div>
@@ -153,94 +153,111 @@ export default function LandingPage() {
               
               {isAuthenticated && isLoading && <p className="text-center">Loading diagrams...</p>}
               {isAuthenticated && error && <p className="text-center text-red-500">{error}</p>}
-              {isAuthenticated && !isLoading && !error && diagrams.length === 0 && (
+              {isAuthenticated && !isLoading && !error && personalDiagrams.length === 0 && collaborativeDiagrams.length === 0 && (
                 <div className="text-center">
                   <h2 className="text-2xl mt-1 font-medium mb-6">開始創建您的第一個圖表</h2>
                   <p className="text-gray-600 mb-6">還沒有任何圖表，點擊下方按鈕開始創建！</p>
                 </div>
               )}
-              {isAuthenticated && !isLoading && !error && diagrams.length > 0 && (
-                <div className="max-w-2xl mx-auto bg-white shadow-lg rounded-lg border border-zinc-200">
-                  <div className="px-6 py-3 border-b border-zinc-200 bg-gray-50 rounded-t-lg">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-800">已儲存的圖表</h3>
-                      <span className="text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
-                        {diagrams.length} 個圖表
-                      </span>
-                    </div>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    <ul className="divide-y divide-zinc-200">
-                      {diagrams.map(diagram => (
-                        <li 
-                          key={diagram.id} 
-                          className="px-6 py-4 hover:bg-zinc-100 transition-colors duration-150 cursor-pointer"
-                          onClick={() => handleDiagramClick(diagram.id)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              {/* 資料庫類型圖示 */}
-                              {databases[diagram.databaseType]?.image && (
-                                <div className="p-1 bg-gray-100 rounded">
-                                  <img
-                                    src={databases[diagram.databaseType].image}
-                                    className="h-4 w-4 object-contain brightness-110 contrast-125"
-                                    alt={databases[diagram.databaseType].name + " icon"}
-                                    title={databases[diagram.databaseType].name}
-                                  />
-                                </div>
-                              )}
-                              {/* 如果沒有圖示，顯示預設圖示 */}
-                              {!databases[diagram.databaseType]?.image && (
-                                <div 
-                                  className="h-6 w-6 bg-gray-300 rounded flex items-center justify-center text-xs font-bold text-gray-600"
-                                  title="Generic Database"
-                                >
-                                  DB
-                                </div>
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <div className="font-semibold text-sky-700 text-lg truncate">
-                                  {diagram.name || "Untitled Diagram"}
-                                </div>
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Last Modified: {new Date(diagram.lastModified).toLocaleString()}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <div className="text-sm text-gray-400 flex-shrink-0">
-                                {databases[diagram.databaseType]?.name ?? "Generic"}
-                              </div>
-                              {/* mitadmin 可以刪除任何圖表 */}
-                              {isMitAdmin && (
-                                <Popconfirm
-                                  title="確定要刪除此圖表嗎？"
-                                  content="此操作不可撤銷"
-                                  onConfirm={(event) => handleDeleteDiagram(diagram.id, event)}
-                                >
-                                  <Button
-                                    icon={<IconDelete />}
-                                    type="danger"
-                                    size="small"
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </Popconfirm>
-                              )}
-                            </div>
+              {isAuthenticated && !isLoading && !error && (personalDiagrams.length > 0 || collaborativeDiagrams.length > 0) && (
+                <div className="max-w-3xl mx-auto">
+                  <Tabs 
+                    type="card" 
+                    activeKey={activeTab} 
+                    onChange={setActiveTab}
+                    size="large"
+                    style={{ fontSize: '18px' }}
+                  >
+                    <TabPane
+                      tab={
+                        <span className="flex items-center space-x-2 text-lg">
+                          <span>個人</span>
+                          <Badge count={personalDiagrams.length} type="primary" />
+                        </span>
+                      }
+                      itemKey="personal"
+                    >
+                      {personalDiagrams.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">沒有個人圖表</p>
+                        </div>
+                      ) : (
+                        <div className="bg-white shadow-lg rounded-lg border border-zinc-200">
+                          <div className="max-h-96 overflow-y-auto">
+                            <ul className="divide-y divide-zinc-200">
+                              {personalDiagrams.map(diagram => (
+                                <DiagramListItem
+                                  key={diagram.id}
+                                  diagram={diagram}
+                                  onDiagramClick={handleDiagramClick}
+                                  onDeleteDiagram={handleDeleteDiagram}
+                                  onPromoteDiagram={handlePromoteDiagram}
+                                  onInviteCollaborator={handleInviteCollaborator}
+                                  canDelete={true}
+                                  canPromote={true}
+                                  canInvite={false}
+                                />
+                              ))}
+                            </ul>
                           </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  {diagrams.length > 6 && (
-                    <div className="px-6 py-2 border-t border-zinc-200 bg-gray-50 rounded-b-lg">
-                      <div className="text-xs text-gray-500 text-center">
-                        <i className="bi bi-arrow-up-down mr-1"></i>
-                        滾動查看更多圖表
-                      </div>
-                    </div>
-                  )}
+                          {personalDiagrams.length > 6 && (
+                            <div className="px-6 py-2 border-t border-zinc-200 bg-gray-50 rounded-b-lg">
+                              <div className="text-xs text-gray-500 text-center">
+                                <i className="bi bi-arrow-up-down mr-1"></i>
+                                滾動查看更多圖表
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </TabPane>
+                    
+                    <TabPane
+                      tab={
+                        <span className="flex items-center space-x-2 text-lg">
+                          <IconUserGroup />
+                          <span>協作</span>
+                          <Badge count={collaborativeDiagrams.length} type="warning" />
+                        </span>
+                      }
+                      itemKey="collaborative"
+                    >
+                      {collaborativeDiagrams.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">沒有協作圖表</p>
+                          <p className="text-sm text-gray-400 mt-2">個人圖表可以被提升為協作圖表</p>
+                        </div>
+                      ) : (
+                        <div className="bg-white shadow-lg rounded-lg border border-zinc-200">
+                          <div className="max-h-96 overflow-y-auto">
+                            <ul className="divide-y divide-zinc-200">
+                              {collaborativeDiagrams.map(diagram => (
+                                <DiagramListItem
+                                  key={diagram.id}
+                                  diagram={diagram}
+                                  onDiagramClick={handleDiagramClick}
+                                  onDeleteDiagram={handleDeleteDiagram}
+                                  onPromoteDiagram={handlePromoteDiagram}
+                                  onInviteCollaborator={handleInviteCollaborator}
+                                  canDelete={false} // 協作圖表不能被任何人刪除，包括 root
+                                  canPromote={false}
+                                  canInvite={diagram.permission_type === 'owner' || isRoot}
+                                />
+                              ))}
+                            </ul>
+                          </div>
+                          {collaborativeDiagrams.length > 6 && (
+                            <div className="px-6 py-2 border-t border-zinc-200 bg-gray-50 rounded-b-lg">
+                              <div className="text-xs text-gray-500 text-center">
+                                <i className="bi bi-arrow-up-down mr-1"></i>
+                                滾動查看更多圖表
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </TabPane>
+                  </Tabs>
                 </div>
               )}
             </FadeIn>
@@ -268,18 +285,26 @@ export default function LandingPage() {
       <div className="text-center text-sm py-3">
         &copy; 2024 <strong>drawDB</strong> - All right reserved.
       </div>
+      
+      {/* Invite Collaborator Modal */}
+      {selectedDiagramForInvite && (
+        <InviteCollaboratorModal
+          visible={inviteModalVisible}
+          onCancel={() => {
+            setInviteModalVisible(false);
+            setSelectedDiagramForInvite(null);
+          }}
+          diagramId={selectedDiagramForInvite.id}
+          diagramName={selectedDiagramForInvite.name || "Untitled Diagram"}
+          currentUserEmail={user?.email}
+          onSuccess={() => {
+            fetchDiagrams();
+          }}
+        />
+      )}
     </div>
   );
 }
-
-const dbs = [
-  { icon: mysql_icon, height: 80 },
-  { icon: postgres_icon, height: 48 },
-  { icon: sqlite_icon, height: 64 },
-  { icon: mariadb_icon, height: 64 },
-  { icon: sql_server_icon, height: 64 },
-  { icon: oraclesql_icon, height: 172 },
-];
 
 const features = [
   {

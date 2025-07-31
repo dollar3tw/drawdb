@@ -352,7 +352,7 @@ router.get('/callback', async (req, res) => {
       if (existingUser) {
         // 使用者已存在，更新最後登入時間
         userId = existingUser.id;
-        await db.updateUser(userId, { last_login: new Date() });
+        await db.updateUser(userId, { lastLogin: new Date().toISOString() });
       } else {
         // 創建新使用者
         const hashedPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10); // 隨機密碼

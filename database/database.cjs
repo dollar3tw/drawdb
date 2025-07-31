@@ -375,6 +375,7 @@ module.exports = {
   createDiagramPermission,
   getDiagramPermission,
   getDiagramPermissions,
+  getDiagramCollaborators,
   updateDiagramPermission,
   deleteDiagramPermission,
   getUserDiagramsByPermission,
@@ -687,16 +688,131 @@ async function updateUser(id, data) {
 }
 
 async function deleteUser(id) {
-  return new Promise((resolve, reject) => {
-    const sql = `DELETE FROM users WHERE id = ?`;
-    db.run(sql, [id], function(err) {
-      if (err) {
-        console.error("Error deleting user:", err.message);
-        reject(err);
-      } else {
-        resolve(this.changes);
+  return new Promise(async (resolve, reject) => {
+    try {
+      // 開始事務
+      await new Promise((resolve, reject) => {
+        db.run('BEGIN TRANSACTION', (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      // 1. 找到 root 使用者 ID
+      const rootUser = await new Promise((resolve, reject) => {
+        db.get(`SELECT id FROM users WHERE role = 'root' OR role = 'mitadmin' LIMIT 1`, (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+
+      if (!rootUser) {
+        throw new Error('找不到 root 使用者，無法轉移協作圖表擁有權');
       }
-    });
+
+      // 2. 將該使用者擁有的協作圖表轉移給 root
+      await new Promise((resolve, reject) => {
+        const transferOwnershipSql = `
+          UPDATE diagram_permissions 
+          SET user_id = ?, granted_by = ?
+          WHERE user_id = ? 
+            AND permission_type = 'owner' 
+            AND diagram_id IN (
+              SELECT id FROM diagrams WHERE is_collaborative = 1
+            )
+        `;
+        db.run(transferOwnershipSql, [rootUser.id, rootUser.id, id], function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`轉移了 ${this.changes} 個協作圖表的擁有權給 root`);
+            resolve(this.changes);
+          }
+        });
+      });
+
+      // 3. 刪除該使用者的其他圖表權限（非擁有者權限）
+      await new Promise((resolve, reject) => {
+        const deletePermissionsSql = `
+          DELETE FROM diagram_permissions 
+          WHERE user_id = ? AND permission_type != 'owner'
+        `;
+        db.run(deletePermissionsSql, [id], function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`刪除了 ${this.changes} 個非擁有者權限記錄`);
+            resolve(this.changes);
+          }
+        });
+      });
+
+      // 4. 刪除該使用者擁有的個人圖表
+      await new Promise((resolve, reject) => {
+        const deletePersonalDiagramsSql = `
+          DELETE FROM diagrams 
+          WHERE id IN (
+            SELECT dp.diagram_id 
+            FROM diagram_permissions dp
+            JOIN diagrams d ON dp.diagram_id = d.id
+            WHERE dp.user_id = ? 
+              AND dp.permission_type = 'owner' 
+              AND (d.is_collaborative = 0 OR d.is_collaborative IS NULL)
+          )
+        `;
+        db.run(deletePersonalDiagramsSql, [id], function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`刪除了 ${this.changes} 個個人圖表`);
+            resolve(this.changes);
+          }
+        });
+      });
+
+      // 5. 刪除剩餘的權限記錄
+      await new Promise((resolve, reject) => {
+        const deleteRemainingPermissionsSql = `DELETE FROM diagram_permissions WHERE user_id = ?`;
+        db.run(deleteRemainingPermissionsSql, [id], function(err) {
+          if (err) reject(err);
+          else resolve(this.changes);
+        });
+      });
+
+      // 6. 刪除使用者會話
+      await new Promise((resolve, reject) => {
+        const deleteSessionsSql = `DELETE FROM user_sessions WHERE user_id = ?`;
+        db.run(deleteSessionsSql, [id], function(err) {
+          if (err) reject(err);
+          else resolve(this.changes);
+        });
+      });
+
+      // 7. 最後刪除使用者
+      const userChanges = await new Promise((resolve, reject) => {
+        const deleteUserSql = `DELETE FROM users WHERE id = ?`;
+        db.run(deleteUserSql, [id], function(err) {
+          if (err) reject(err);
+          else resolve(this.changes);
+        });
+      });
+
+      // 提交事務
+      await new Promise((resolve, reject) => {
+        db.run('COMMIT', (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      console.log(`成功刪除使用者 ${id}，協作圖表已轉移給 root`);
+      resolve(userChanges);
+
+    } catch (error) {
+      // 回滾事務
+      await new Promise((resolve) => {
+        db.run('ROLLBACK', () => resolve());
+      });
+      console.error("Error deleting user:", error.message);
+      reject(error);
+    }
   });
 }
 
@@ -927,6 +1043,32 @@ async function getDiagramPermissions(diagramId) {
   });
 }
 
+async function getDiagramCollaborators(diagramId) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      SELECT u.id, u.username, u.email, u.display_name, dp.permission_type
+      FROM diagram_permissions dp
+      JOIN users u ON dp.user_id = u.id
+      WHERE dp.diagram_id = ?
+      ORDER BY 
+        CASE dp.permission_type 
+          WHEN 'owner' THEN 1 
+          WHEN 'editor' THEN 2 
+          WHEN 'viewer' THEN 3 
+        END,
+        dp.granted_at ASC
+    `;
+    db.all(sql, [diagramId], (err, rows) => {
+      if (err) {
+        console.error("Error getting diagram collaborators:", err.message);
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+}
+
 async function updateDiagramPermission(diagramId, userId, permissionType) {
   return new Promise((resolve, reject) => {
     const sql = `UPDATE diagram_permissions SET permission_type = ? WHERE diagram_id = ? AND user_id = ?`;
@@ -964,12 +1106,34 @@ async function getUserDiagramsByPermission(userId) {
       WHERE dp.user_id = ?
       ORDER BY d.lastModified DESC
     `;
-    db.all(sql, [userId], (err, rows) => {
+    db.all(sql, [userId], async (err, rows) => {
       if (err) {
         console.error("Error getting user diagrams by permission:", err.message);
         reject(err);
       } else {
-        resolve(rows.map(parseDiagramRow));
+        // 解析 JSON 欄位並保留 permission_type
+        const diagrams = rows.map(row => {
+          const parsed = parseDiagramRow(row);
+          parsed.permission_type = row.permission_type;
+          return parsed;
+        });
+        
+        // 對於協作圖表，獲取所有協作者
+        for (const diagram of diagrams) {
+          if (diagram.is_collaborative) {
+            try {
+              const collaborators = await getDiagramCollaborators(diagram.id);
+              diagram.collaborators = collaborators;
+            } catch (error) {
+              console.error(`Error fetching collaborators for diagram ${diagram.id}:`, error);
+              diagram.collaborators = [];
+            }
+          } else {
+            diagram.collaborators = [];
+          }
+        }
+        
+        resolve(diagrams);
       }
     });
   });

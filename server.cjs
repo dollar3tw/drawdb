@@ -69,6 +69,10 @@ function startApp() {
   // SSO routes
   const ssoRoutes = require('./routes/sso.cjs');
   app.use('/sso', ssoRoutes);
+  
+  // Users routes
+  const usersRoutes = require('./routes/users.cjs');
+  app.use('/api/users', usersRoutes);
 
   // 所有非 API 路由都返回 index.html (用於 React Router)
   app.get('*', (req, res) => {

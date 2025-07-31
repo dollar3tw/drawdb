@@ -49,6 +49,7 @@ export default function WorkSpace() {
   const [selectedDb, setSelectedDb] = useState("");
   const [isNewDiagram, setIsNewDiagram] = useState(false); // 新增狀態來追蹤是否為新圖表
   const [previousData, setPreviousData] = useState(null); // 新增狀態來追蹤上一次的資料
+  const [isCollaborative, setIsCollaborative] = useState(false); // 新增狀態來追蹤是否為協作圖表
   const { layout } = useLayout();
   const { settings } = useSettings();
   const { types, setTypes } = useTypes();
@@ -216,6 +217,7 @@ export default function WorkSpace() {
           setNotes(d.notes);
           setAreas(d.areas);
           setTransform({ pan: d.pan, zoom: d.zoom });
+          setIsCollaborative(d.is_collaborative || false);
           if (databases[d.databaseType].hasTypes) { // Use d.databaseType
             setTypes(d.types ?? []);
           }
@@ -275,6 +277,9 @@ export default function WorkSpace() {
             setEnums(diagram.enums ?? []);
           }
           window.name = `d ${diagram.id}`;
+          
+          // 設定是否為協作圖表
+          setIsCollaborative(diagram.is_collaborative || false);
           
           // 設定初始的 previousData
           setPreviousData({
@@ -346,6 +351,7 @@ export default function WorkSpace() {
       setRelationships([]);
       setAreas([]);
       setNotes([]);
+      setIsCollaborative(false); // 新圖表默認為個人圖表
       setTypes([]);
       setEnums([]);
       setTransform({ pan: { x: 0, y: 0 }, zoom: 1 });
@@ -454,6 +460,7 @@ export default function WorkSpace() {
           setTitle={setTitle}
           lastSaved={lastSaved}
           setLastSaved={setLastSaved}
+          isCollaborative={isCollaborative}
         />
       {/* </IdContext.Provider> */}
       <div

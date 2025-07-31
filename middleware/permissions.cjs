@@ -7,13 +7,19 @@ const checkDiagramPermission = async (req, res, next) => {
     const userId = req.user.id;
     const userRole = req.user.role;
     
-    // Root 有所有權限
+    // 獲取圖表資訊來檢查是否為協作圖表
+    const diagram = await db.getDiagramById(diagramId);
+    if (!diagram) {
+      return res.status(404).json({ error: '圖表不存在' });
+    }
+    
+    // Root 有所有權限，但不能刪除協作圖表
     if (userRole === 'root') {
       req.permission = {
         type: 'root',
         canView: true,
         canEdit: true,
-        canDelete: true,
+        canDelete: !diagram.is_collaborative, // 協作圖表不能被刪除
         canManagePermissions: true
       };
       return next();
@@ -31,7 +37,7 @@ const checkDiagramPermission = async (req, res, next) => {
       type: permission.permission_type,
       canView: true,
       canEdit: permission.permission_type === 'owner' || permission.permission_type === 'editor',
-      canDelete: permission.permission_type === 'owner',
+      canDelete: permission.permission_type === 'owner' && !diagram.is_collaborative, // 協作圖表不能被刪除
       canManagePermissions: permission.permission_type === 'owner'
     };
     
