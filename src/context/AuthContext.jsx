@@ -30,7 +30,37 @@ export const AuthProvider = ({ children }) => {
   // 檢查用戶是否已登入
   useEffect(() => {
     const checkAuth = async () => {
-      if (token) {
+      // 首先檢查 URL 是否有 SSO 回調的 token
+      const urlParams = new URLSearchParams(window.location.search);
+      const ssoToken = urlParams.get('token');
+      const ssoEmail = urlParams.get('email');
+      const ssoName = urlParams.get('name');
+      
+      if (ssoToken) {
+        // 處理 SSO 登入
+        console.log('Processing SSO token...');
+        setToken(ssoToken);
+        localStorage.setItem('auth_token', ssoToken);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${ssoToken}`;
+        
+        // 清理 URL 參數
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        try {
+          console.log('Verifying SSO token with /api/auth/me...');
+          const response = await axios.get(`${API_BASE_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${ssoToken}` }
+          });
+          console.log('SSO login successful:', response.data);
+          setUser(response.data.user);
+          return; // 重要：避免執行後續的 token 檢查
+        } catch (error) {
+          console.error('SSO auth check failed:', error);
+          console.error('Response:', error.response?.data);
+          logout();
+        }
+      } else if (token) {
+        // 一般的 token 檢查
         try {
           const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
           setUser(response.data.user);

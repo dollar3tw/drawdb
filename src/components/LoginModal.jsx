@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, Button, Toast, Tabs, TabPane } from '@douyinfe/semi-ui';
-import { IconUser, IconLock, IconMail } from '@douyinfe/semi-icons';
+import { Modal, Form, Input, Button, Toast, Tabs, TabPane, Divider } from '@douyinfe/semi-ui';
+import { IconUser, IconLock, IconMail, IconSafe } from '@douyinfe/semi-icons';
 import { useAuth } from '../context/AuthContext';
 
 const LoginModal = ({ visible, onCancel }) => {
@@ -23,6 +23,11 @@ const LoginModal = ({ visible, onCancel }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSSOLogin = () => {
+    // 強制重新載入 SSO 登入頁面，避免緩存
+    window.location.href = `/sso/login?t=${Date.now()}`;
   };
 
   const handleRegister = async (values) => {
@@ -83,6 +88,19 @@ const LoginModal = ({ visible, onCancel }) => {
               登入
             </Button>
           </Form>
+          
+          <Divider margin='12px'>或</Divider>
+          
+          <Button
+            type="tertiary"
+            block
+            icon={<IconSafe />}
+            onClick={handleSSOLogin}
+            style={{ marginTop: 8 }}
+          >
+            使用 Synology SSO 登入
+          </Button>
+          
           <div style={{ marginTop: 16, textAlign: 'center', fontSize: 12, color: '#666' }}>
             預設管理員帳號：mitadmin / mitadmin123
           </div>

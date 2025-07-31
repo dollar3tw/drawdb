@@ -96,7 +96,18 @@ PORT=3002 npm start
 ```env
 PORT=3001                    # 服務端口 (預設: 3001)
 NODE_ENV=production         # 環境模式
+JWT_SECRET=your-secret-key  # JWT 簽名密鑰
+SESSION_SECRET=your-session-secret  # Session 加密密鑰
+
+# Synology SSO 配置（可選）
+SSO_ISSUER=https://sso.your-domain.com
+SSO_CLIENT_ID=your-client-id
+SSO_CLIENT_SECRET=your-client-secret
+SSO_REDIRECT_URI=http://your-app-domain/sso/callback
 ```
+
+### Synology SSO 設定
+如需啟用 Synology SSO 登入功能，請參考 [Synology SSO 整合指南](./docs/synology-sso.md)。
 
 ### 生產環境
 生產環境中前後端在同一服務下，無需額外配置。
@@ -128,6 +139,7 @@ NODE_ENV=production         # 環境模式
 - 支援使用者註冊和登入
 - JWT Token 認證
 - 自動會話清理
+- **Synology SSO 單一登入支援** - 可使用 DSM 帳號直接登入
 
 ## 🛠️ 技術架構
 

@@ -16,18 +16,13 @@ const authenticateToken = async (req, res, next) => {
     // 驗證 JWT token
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // 檢查會話是否仍然有效
-    const session = await getSessionByToken(token);
-    if (!session) {
-      return res.status(401).json({ error: '會話已過期或無效' });
-    }
-
-    // 將用戶資訊添加到請求對象
+    // 從 JWT token 中獲取用戶資訊
+    // SSO 登入的用戶可能沒有 session token，所以直接使用 JWT 中的資訊
     req.user = {
-      id: session.userId,
-      username: session.username,
-      email: session.email,
-      role: session.role
+      id: decoded.userId,
+      username: decoded.username,
+      email: decoded.email,
+      role: decoded.role || 'user'
     };
 
     next();

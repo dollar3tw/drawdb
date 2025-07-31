@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const session = require('express-session');
 const db = require('./database/database.cjs');
 
 const app = express();
@@ -23,8 +24,25 @@ server.listen(PORT, (err) => {
 
 function startApp() {
   // Middleware
-  app.use(cors());
+  app.use(cors({
+    origin: true,
+    credentials: true
+  }));
   app.use(express.json());
+  
+  // Session middleware for SSO
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-session-secret-key',
+    resave: false,
+    saveUninitialized: true, // 改為 true 以確保 session 被創建
+    cookie: {
+      secure: false, // 開發環境設為 false
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax' // 允許跨站點重定向
+    },
+    name: 'drawdb.sid' // 自定義 session 名稱
+  }));
 
   // 記錄靜態檔案請求
   app.use(express.static(path.join(__dirname, 'dist'), {
@@ -44,13 +62,17 @@ function startApp() {
 
   const templateRoutes = require('./routes/templates.cjs');
   app.use('/api/templates', templateRoutes);
+  
+  // SSO routes
+  const ssoRoutes = require('./routes/sso.cjs');
+  app.use('/sso', ssoRoutes);
 
   // 所有非 API 路由都返回 index.html (用於 React Router)
   app.get('*', (req, res) => {
     console.log(`📁 靜態檔案請求: GET ${req.path}`);
-    // 如果是 API 路由，返回 404
-    if (req.path.startsWith('/api/')) {
-      return res.status(404).json({ message: 'API endpoint not found' });
+    // 如果是 API 路由或 SSO 路由，返回 404
+    if (req.path.startsWith('/api/') || req.path.startsWith('/sso/')) {
+      return res.status(404).json({ message: 'Endpoint not found' });
     }
     // 否則返回前端應用
     res.sendFile(path.join(__dirname, 'dist/index.html'));
