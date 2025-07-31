@@ -93,7 +93,7 @@ const initDb = (callback = () => {}) => {
       username TEXT UNIQUE NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('mitadmin', 'editor', 'user')),
+      role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('root', 'editor', 'user')),
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       lastLogin DATETIME,
       isActive INTEGER DEFAULT 1
@@ -104,12 +104,12 @@ const initDb = (callback = () => {}) => {
       }
       console.log("Table 'users' created or already exists.");
       
-      // Create default mitadmin user if not exists
-      db.get("SELECT id FROM users WHERE username = 'mitadmin'", (err, row) => {
+      // Create default root user if not exists
+      db.get("SELECT id FROM users WHERE role = 'root'", (err, row) => {
         if (err) {
-          console.error("Error checking for mitadmin user:", err.message);
+          console.error("Error checking for root user:", err.message);
         } else if (!row) {
-          // Create default mitadmin user
+          // Create default root user
           const bcrypt = require('bcrypt');
           const defaultPassword = 'mitadmin123'; // 預設密碼，建議首次登入後更改
           bcrypt.hash(defaultPassword, 10, (err, hashedPassword) => {
@@ -117,11 +117,11 @@ const initDb = (callback = () => {}) => {
               console.error("Error hashing default password:", err.message);
             } else {
               db.run(`INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)`,
-                ['mitadmin', 'mitadmin@mit.edu', hashedPassword, 'mitadmin'], (err) => {
+                ['root', 'root@drawdb.local', hashedPassword, 'root'], (err) => {
                   if (err) {
-                    console.error("Error creating default mitadmin user:", err.message);
+                    console.error("Error creating default root user:", err.message);
                   } else {
-                    console.log("Default mitadmin user created successfully.");
+                    console.log("Default root user created successfully.");
                   }
                 });
             }
@@ -370,7 +370,18 @@ module.exports = {
   // Revision History Functions
   createRevisionHistory,
   getRevisionHistoryByDiagramId,
-  deleteRevisionHistoryByDiagramId
+  deleteRevisionHistoryByDiagramId,
+  // Permission Functions
+  createDiagramPermission,
+  getDiagramPermission,
+  getDiagramPermissions,
+  updateDiagramPermission,
+  deleteDiagramPermission,
+  getUserDiagramsByPermission,
+  // Collaboration Functions
+  createCollaborationHistory,
+  getCollaborationHistory,
+  promoteDiagramToCollaborative
 };
 
 // Helper function to parse JSON fields for Templates
@@ -539,12 +550,15 @@ async function deleteTemplate(id) {
 
 async function createUser(data) {
   return new Promise((resolve, reject) => {
-    const sql = `INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)`;
+    const sql = `INSERT INTO users (username, email, password, role, auth_source, display_name, sso_id) VALUES (?, ?, ?, ?, ?, ?, ?)`;
     const params = [
       data.username,
       data.email,
       data.password, // Should be hashed before calling this function
-      data.role || 'user'
+      data.role || 'user',
+      data.auth_source || 'LocalDB',
+      data.display_name || data.username,
+      data.sso_id || null
     ];
     
     db.run(sql, params, function(err) {
@@ -784,8 +798,8 @@ async function deleteDiagramByAdmin(diagramId, adminUserId) {
     // First check if the admin user has mitadmin role
     getUserById(adminUserId)
       .then(admin => {
-        if (!admin || admin.role !== 'mitadmin') {
-          reject(new Error('Unauthorized: Only mitadmin can delete diagrams'));
+        if (!admin || admin.role !== 'root') {
+          reject(new Error('Unauthorized: Only root can delete diagrams'));
           return;
         }
         
@@ -853,6 +867,182 @@ async function deleteRevisionHistoryByDiagramId(diagramId) {
     db.run(sql, [diagramId], function(err) {
       if (err) {
         console.error("Error deleting revision history by diagram id:", err.message);
+        reject(err);
+      } else {
+        resolve(this.changes);
+      }
+    });
+  });
+}
+
+// --- Permission Management Functions ---
+
+async function createDiagramPermission(diagramId, userId, permissionType, grantedBy) {
+  return new Promise((resolve, reject) => {
+    const sql = `INSERT INTO diagram_permissions (diagram_id, user_id, permission_type, granted_by) VALUES (?, ?, ?, ?)`;
+    const params = [diagramId, userId, permissionType, grantedBy];
+    
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error("Error creating diagram permission:", err.message);
+        reject(err);
+      } else {
+        resolve({ id: this.lastID, diagramId, userId, permissionType, grantedBy });
+      }
+    });
+  });
+}
+
+async function getDiagramPermission(diagramId, userId) {
+  return new Promise((resolve, reject) => {
+    const sql = `SELECT * FROM diagram_permissions WHERE diagram_id = ? AND user_id = ?`;
+    db.get(sql, [diagramId, userId], (err, row) => {
+      if (err) {
+        console.error("Error getting diagram permission:", err.message);
+        reject(err);
+      } else {
+        resolve(row);
+      }
+    });
+  });
+}
+
+async function getDiagramPermissions(diagramId) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      SELECT dp.*, u.username, u.email, u.display_name 
+      FROM diagram_permissions dp
+      JOIN users u ON dp.user_id = u.id
+      WHERE dp.diagram_id = ?
+      ORDER BY dp.granted_at DESC
+    `;
+    db.all(sql, [diagramId], (err, rows) => {
+      if (err) {
+        console.error("Error getting diagram permissions:", err.message);
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+}
+
+async function updateDiagramPermission(diagramId, userId, permissionType) {
+  return new Promise((resolve, reject) => {
+    const sql = `UPDATE diagram_permissions SET permission_type = ? WHERE diagram_id = ? AND user_id = ?`;
+    db.run(sql, [permissionType, diagramId, userId], function(err) {
+      if (err) {
+        console.error("Error updating diagram permission:", err.message);
+        reject(err);
+      } else {
+        resolve(this.changes);
+      }
+    });
+  });
+}
+
+async function deleteDiagramPermission(diagramId, userId) {
+  return new Promise((resolve, reject) => {
+    const sql = `DELETE FROM diagram_permissions WHERE diagram_id = ? AND user_id = ?`;
+    db.run(sql, [diagramId, userId], function(err) {
+      if (err) {
+        console.error("Error deleting diagram permission:", err.message);
+        reject(err);
+      } else {
+        resolve(this.changes);
+      }
+    });
+  });
+}
+
+async function getUserDiagramsByPermission(userId) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      SELECT d.*, dp.permission_type 
+      FROM diagrams d
+      JOIN diagram_permissions dp ON d.id = dp.diagram_id
+      WHERE dp.user_id = ?
+      ORDER BY d.lastModified DESC
+    `;
+    db.all(sql, [userId], (err, rows) => {
+      if (err) {
+        console.error("Error getting user diagrams by permission:", err.message);
+        reject(err);
+      } else {
+        resolve(rows.map(parseDiagramRow));
+      }
+    });
+  });
+}
+
+// --- Collaboration History Functions ---
+
+async function createCollaborationHistory(diagramId, userId, action, targetType, targetId, changes) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      INSERT INTO collaboration_history (diagram_id, user_id, action, target_type, target_id, changes) 
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      diagramId,
+      userId,
+      action,
+      targetType,
+      targetId,
+      JSON.stringify(changes || {})
+    ];
+    
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error("Error creating collaboration history:", err.message);
+        reject(err);
+      } else {
+        resolve(this.lastID);
+      }
+    });
+  });
+}
+
+async function getCollaborationHistory(diagramId, limit = 100) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      SELECT ch.*, u.username, u.display_name 
+      FROM collaboration_history ch
+      JOIN users u ON ch.user_id = u.id
+      WHERE ch.diagram_id = ?
+      ORDER BY ch.timestamp DESC
+      LIMIT ?
+    `;
+    db.all(sql, [diagramId, limit], (err, rows) => {
+      if (err) {
+        console.error("Error getting collaboration history:", err.message);
+        reject(err);
+      } else {
+        // Parse changes JSON
+        rows.forEach(row => {
+          try {
+            row.changes = JSON.parse(row.changes);
+          } catch (e) {
+            row.changes = {};
+          }
+        });
+        resolve(rows);
+      }
+    });
+  });
+}
+
+async function promoteDiagramToCollaborative(diagramId, promotedBy) {
+  return new Promise((resolve, reject) => {
+    const currentTimestamp = getCurrentTimestamp();
+    const sql = `
+      UPDATE diagrams 
+      SET is_collaborative = 1, promoted_by = ?, promoted_at = ? 
+      WHERE id = ?
+    `;
+    db.run(sql, [promotedBy, currentTimestamp, diagramId], function(err) {
+      if (err) {
+        console.error("Error promoting diagram to collaborative:", err.message);
         reject(err);
       } else {
         resolve(this.changes);

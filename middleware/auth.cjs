@@ -47,11 +47,11 @@ const requireRole = (roles) => {
   };
 };
 
-// 檢查是否為 mitadmin
-const requireMitAdmin = requireRole(['mitadmin']);
+// 檢查是否為 root
+const requireRoot = requireRole(['root']);
 
 // 檢查是否為編輯者或以上權限
-const requireEditor = requireRole(['mitadmin', 'editor']);
+const requireEditor = requireRole(['root', 'editor']);
 
 // 可選的認證中間件（不強制要求登入）
 const optionalAuth = async (req, res, next) => {
@@ -61,16 +61,14 @@ const optionalAuth = async (req, res, next) => {
 
     if (token) {
       const decoded = jwt.verify(token, JWT_SECRET);
-      const session = await getSessionByToken(token);
       
-      if (session) {
-        req.user = {
-          id: session.userId,
-          username: session.username,
-          email: session.email,
-          role: session.role
-        };
-      }
+      // SSO 登入的用戶可能沒有 session token，所以直接使用 JWT 中的資訊
+      req.user = {
+        id: decoded.userId,
+        username: decoded.username,
+        email: decoded.email,
+        role: decoded.role || 'user'
+      };
     }
 
     next();
@@ -83,7 +81,8 @@ const optionalAuth = async (req, res, next) => {
 module.exports = {
   authenticateToken,
   requireRole,
-  requireMitAdmin,
+  requireRoot,
+  requireMitAdmin: requireRoot, // 向後相容
   requireEditor,
   optionalAuth,
   JWT_SECRET

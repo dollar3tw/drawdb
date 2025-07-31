@@ -154,8 +154,9 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     isAuthenticated: !!user,
-    isMitAdmin: user?.role === 'mitadmin',
-    isEditor: user?.role === 'editor' || user?.role === 'mitadmin',
+    isRoot: user?.role === 'root',
+    isMitAdmin: user?.role === 'root', // 向後相容
+    isEditor: user?.role === 'editor' || user?.role === 'root',
     API_BASE_URL
   };
 

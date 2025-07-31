@@ -63,6 +63,9 @@ function startApp() {
   const templateRoutes = require('./routes/templates.cjs');
   app.use('/api/templates', templateRoutes);
   
+  const permissionRoutes = require('./routes/permissions.cjs');
+  app.use('/api/diagrams', permissionRoutes);
+  
   // SSO routes
   const ssoRoutes = require('./routes/sso.cjs');
   app.use('/sso', ssoRoutes);

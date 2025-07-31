@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const router = express.Router();
 const dbHelpers = require('../database/database.cjs');
-const { authenticateToken, requireMitAdmin, JWT_SECRET } = require('../middleware/auth.cjs');
+const { authenticateToken, requireRoot, JWT_SECRET } = require('../middleware/auth.cjs');
 
 // 用戶註冊
 router.post('/register', async (req, res) => {
@@ -185,7 +185,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
 });
 
 // 管理員功能：獲取所有用戶
-router.get('/users', authenticateToken, requireMitAdmin, async (req, res) => {
+router.get('/users', authenticateToken, requireRoot, async (req, res) => {
   try {
     const users = await dbHelpers.getAllUsers();
     res.json({ users });
@@ -196,12 +196,12 @@ router.get('/users', authenticateToken, requireMitAdmin, async (req, res) => {
 });
 
 // 管理員功能：更新用戶角色
-router.put('/users/:id/role', authenticateToken, requireMitAdmin, async (req, res) => {
+router.put('/users/:id/role', authenticateToken, requireRoot, async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
 
-    if (!['mitadmin', 'editor', 'user'].includes(role)) {
+    if (!['root', 'editor', 'user'].includes(role)) {
       return res.status(400).json({ error: '無效的角色' });
     }
 
@@ -223,7 +223,7 @@ router.put('/users/:id/role', authenticateToken, requireMitAdmin, async (req, re
 });
 
 // 管理員功能：刪除用戶
-router.delete('/users/:id', authenticateToken, requireMitAdmin, async (req, res) => {
+router.delete('/users/:id', authenticateToken, requireRoot, async (req, res) => {
   try {
     const { id } = req.params;
 

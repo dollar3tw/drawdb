@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, optionalAuth, requireMitAdmin } = require('../middleware/auth.cjs');
+const { authenticateToken, optionalAuth, requireRoot } = require('../middleware/auth.cjs');
+const { checkDiagramPermission, requireEditPermission, requireDeletePermission, requireManagePermission, logCollaborationHistory } = require('../middleware/permissions.cjs');
 const dbHelpers = require('../database/database.cjs');
 
 // POST /api/diagrams - Create Diagram (需要認證)
@@ -11,6 +12,10 @@ router.post('/', authenticateToken, async (req, res) => {
     diagramData.userId = req.user.id;
     
     const newDiagram = await dbHelpers.createDiagram(diagramData);
+    
+    // 為創建者新增擁有者權限
+    await dbHelpers.createDiagramPermission(newDiagram.id, req.user.id, 'owner', req.user.id);
+    
     res.status(201).json(newDiagram);
   } catch (error) {
     console.error("Error creating diagram:", error);
@@ -23,14 +28,18 @@ router.get('/', optionalAuth, async (req, res) => {
   try {
     let diagrams;
     
+    console.log('GET /api/diagrams - req.user:', req.user); // 調試日誌
+    
     if (req.user) {
       // 如果用戶已登入，根據角色返回不同的圖表
-      if (req.user.role === 'mitadmin') {
-        // mitadmin 可以看到所有圖表
+      if (req.user.role === 'root') {
+        // root 可以看到所有圖表
         diagrams = await dbHelpers.getAllDiagrams();
       } else {
-        // 其他用戶只能看到自己的圖表
-        diagrams = await dbHelpers.getDiagramsByUserId(req.user.id);
+        // 其他用戶只能看到自己有權限的圖表
+        console.log('Getting diagrams for user:', req.user.id); // 調試日誌
+        diagrams = await dbHelpers.getUserDiagramsByPermission(req.user.id);
+        console.log('Found diagrams:', diagrams.length); // 調試日誌
       }
     } else {
       // 未登入用戶返回空數組或公共圖表
@@ -45,7 +54,7 @@ router.get('/', optionalAuth, async (req, res) => {
 });
 
 // GET /api/diagrams/all - 管理員獲取所有圖表
-router.get('/all', authenticateToken, requireMitAdmin, async (req, res) => {
+router.get('/all', authenticateToken, requireRoot, async (req, res) => {
   try {
     const diagrams = await dbHelpers.getAllDiagrams();
     res.status(200).json(diagrams);
@@ -56,22 +65,13 @@ router.get('/all', authenticateToken, requireMitAdmin, async (req, res) => {
 });
 
 // GET /api/diagrams/:id - Get Specific Diagram
-router.get('/:id', optionalAuth, async (req, res) => {
+router.get('/:id', authenticateToken, checkDiagramPermission, async (req, res) => {
   try {
     const { id } = req.params;
     const diagram = await dbHelpers.getDiagramById(id);
     
     if (!diagram) {
       return res.status(404).json({ error: 'Diagram not found' });
-    }
-
-    // 檢查權限：圖表擁有者、mitadmin 或未設置 userId 的圖表（舊數據）
-    if (diagram.userId && req.user) {
-      if (diagram.userId !== req.user.id && req.user.role !== 'mitadmin') {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-    } else if (diagram.userId && !req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
     }
 
     res.status(200).json(diagram);
@@ -82,21 +82,10 @@ router.get('/:id', optionalAuth, async (req, res) => {
 });
 
 // PUT /api/diagrams/:id - Update Diagram
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, checkDiagramPermission, requireEditPermission, logCollaborationHistory('update', 'diagram'), async (req, res) => {
   try {
     const { id } = req.params;
     const diagramData = req.body;
-
-    // 首先檢查圖表是否存在
-    const existingDiagram = await dbHelpers.getDiagramById(id);
-    if (!existingDiagram) {
-      return res.status(404).json({ error: 'Diagram not found' });
-    }
-
-    // 檢查權限：只有圖表擁有者或 mitadmin 可以更新
-    if (existingDiagram.userId && existingDiagram.userId !== req.user.id && req.user.role !== 'mitadmin') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
 
     const updatedDiagram = await dbHelpers.updateDiagram(id, diagramData);
     if (updatedDiagram) {
@@ -111,26 +100,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/diagrams/:id - Delete Diagram
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, checkDiagramPermission, requireDeletePermission, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 首先檢查圖表是否存在
-    const existingDiagram = await dbHelpers.getDiagramById(id);
-    if (!existingDiagram) {
-      return res.status(404).json({ error: 'Diagram not found' });
-    }
-
     let changes;
 
-    // 如果是 mitadmin，使用特殊的刪除函數
-    if (req.user.role === 'mitadmin') {
+    // 如果是 root，使用特殊的刪除函數
+    if (req.user.role === 'root') {
       changes = await dbHelpers.deleteDiagramByAdmin(id, req.user.id);
     } else {
-      // 普通用戶只能刪除自己的圖表
-      if (existingDiagram.userId && existingDiagram.userId !== req.user.id) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
       changes = await dbHelpers.deleteDiagram(id);
     }
 
@@ -149,8 +128,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/diagrams/user/:userId - 獲取特定用戶的圖表（僅 mitadmin）
-router.get('/user/:userId', authenticateToken, requireMitAdmin, async (req, res) => {
+// GET /api/diagrams/user/:userId - 獲取特定用戶的圖表（僅 root）
+router.get('/user/:userId', authenticateToken, requireRoot, async (req, res) => {
   try {
     const { userId } = req.params;
     const diagrams = await dbHelpers.getDiagramsByUserId(userId);
@@ -162,16 +141,10 @@ router.get('/user/:userId', authenticateToken, requireMitAdmin, async (req, res)
 });
 
 // 獲取圖表的修訂歷程
-router.get('/:id/revisions', authenticateToken, async (req, res) => {
+router.get('/:id/revisions', authenticateToken, checkDiagramPermission, async (req, res) => {
   try {
     const { id } = req.params;
     
-    // 檢查圖表是否存在
-    const diagram = await dbHelpers.getDiagramById(id);
-    if (!diagram) {
-      return res.status(404).json({ error: '圖表不存在' });
-    }
-
     // 獲取修訂歷程
     const revisions = await dbHelpers.getRevisionHistoryByDiagramId(id);
     res.json({ revisions });
@@ -183,17 +156,11 @@ router.get('/:id/revisions', authenticateToken, async (req, res) => {
 });
 
 // 添加修訂歷程記錄
-router.post('/:id/revisions', authenticateToken, async (req, res) => {
+router.post('/:id/revisions', authenticateToken, checkDiagramPermission, requireEditPermission, async (req, res) => {
   try {
     const { id } = req.params;
     const { action, element, message } = req.body;
     
-    // 檢查圖表是否存在
-    const diagram = await dbHelpers.getDiagramById(id);
-    if (!diagram) {
-      return res.status(404).json({ error: '圖表不存在' });
-    }
-
     // 創建修訂歷程記錄
     const revisionId = await dbHelpers.createRevisionHistory(
       id,

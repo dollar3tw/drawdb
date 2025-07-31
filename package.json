@@ -10,7 +10,9 @@
     "setup": "npm install",
     "start": "npm run build && node server.cjs",
     "dev": "npm run build && node server.cjs",
-    "dev:server": "npm run build && nodemon server.cjs"
+    "dev:server": "npm run build && nodemon server.cjs",
+    "migrate": "node database/migrate.cjs",
+    "migrate:rollback": "node database/migrate.cjs rollback"
   },
   "dependencies": {
     "@dbml/core": "^3.9.7-alpha.0",

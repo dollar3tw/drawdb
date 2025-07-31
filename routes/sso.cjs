@@ -361,18 +361,24 @@ router.get('/callback', async (req, res) => {
           username: username,
           email: email,
           password: hashedPassword,
-          display_name: displayName
+          display_name: displayName,
+          auth_source: 'SSO',
+          sso_id: userinfo.sub
         });
         
         userId = newUser.id;
       }
       
+      // 獲取完整的使用者資訊（包含角色）
+      const fullUser = existingUser || await db.getUserById(userId);
+      
       // 創建 JWT token
       const token = jwt.sign(
         { 
           userId: userId,
-          username: existingUser ? existingUser.username : username,
-          email: email
+          username: fullUser.username,
+          email: email,
+          role: fullUser.role || 'user'
         },
         process.env.JWT_SECRET || 'drawdb-mit-secret-key-2024',
         { expiresIn: '7d' }
