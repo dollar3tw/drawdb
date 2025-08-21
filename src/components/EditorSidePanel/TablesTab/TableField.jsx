@@ -137,6 +137,11 @@ export default function TableField({ data, tid, index }) {
             }}
           />
         </div>
+      </div>
+      
+      {/* 按鈕與註解行 */}
+      <div className="flex gap-2 items-center mt-2">
+        <div className="w-6"></div> {/* 佔位符，對應 DragHandle 的寬度 */}
         <div>
           <Button
             type={data.notNull ? "tertiary" : "primary"}
@@ -208,11 +213,6 @@ export default function TableField({ data, tid, index }) {
             <Button type="tertiary" icon={<IconMore />} />
           </Popover>
         </div>
-      </div>
-      
-      {/* 註解編輯行 */}
-      <div className="flex gap-2 items-center mt-2">
-        <div className="w-6"></div> {/* 佔位符，對應 DragHandle 的寬度 */}
         <div className="flex-1">
           <TextArea
             placeholder={t("comment")}

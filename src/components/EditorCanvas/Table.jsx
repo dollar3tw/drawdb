@@ -7,13 +7,10 @@ import {
   tableColorStripHeight,
 } from "../../data/constants";
 import {
-  IconEdit,
-  IconMore,
   IconMinus,
-  IconDeleteStroked,
   IconKeyStroked,
 } from "@douyinfe/semi-icons";
-import { Popover, Tag, Button, SideSheet, Input } from "@douyinfe/semi-ui";
+import { Popover, Tag, SideSheet, Input } from "@douyinfe/semi-ui";
 import { useLayout, useSettings, useDiagram, useSelect, useUndoRedo } from "../../hooks";
 import TableInfo from "../EditorSidePanel/TablesTab/TableInfo";
 import { useTranslation } from "react-i18next";
@@ -35,7 +32,7 @@ export default function Table(props) {
     setLinkingLine,
   } = props;
   const { layout } = useLayout();
-  const { deleteTable, deleteField, updateTable } = useDiagram();
+  const { deleteField, updateTable } = useDiagram();
   const { settings } = useSettings();
   const { t } = useTranslation();
   const { selectedElement, setSelectedElement, bulkSelectedElements } =
@@ -201,92 +198,6 @@ export default function Table(props) {
                     {tableData.comment}
                   </div>
                 )}
-              </div>
-              <div className="hidden group-hover:block ml-2">
-                <div className="flex justify-end items-center">
-                  <Button
-                    icon={<IconEdit />}
-                    size="small"
-                    theme="solid"
-                    style={{
-                      backgroundColor: "#2f68adb3",
-                      marginRight: "6px",
-                    }}
-                    onClick={openEditor}
-                  />
-                  <Popover
-                    key={tableData.id}
-                    content={
-                      <div className="popover-theme">
-                        <div className="mb-2">
-                          <strong>{t("comment")}:</strong>{" "}
-                          {tableData.comment === "" ? (
-                            t("not_set")
-                          ) : (
-                            <div>{tableData.comment}</div>
-                          )}
-                        </div>
-                        <div>
-                          <strong
-                            className={`${
-                              tableData.indices.length === 0 ? "" : "block"
-                            }`}
-                          >
-                            {t("indices")}:
-                          </strong>{" "}
-                          {tableData.indices.length === 0 ? (
-                            t("not_set")
-                          ) : (
-                            <div>
-                              {tableData.indices.map((index, k) => (
-                                <div
-                                  key={k}
-                                  className={`flex items-center my-1 px-2 py-1 rounded ${
-                                    settings.mode === "light"
-                                      ? "bg-gray-100"
-                                      : "bg-zinc-800"
-                                  }`}
-                                >
-                                  <i className="fa-solid fa-thumbtack me-2 mt-1 text-slate-500"></i>
-                                  <div>
-                                    {index.fields.map((f) => (
-                                      <Tag color="blue" key={f} className="me-1">
-                                        {f}
-                                      </Tag>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <Button
-                          icon={<IconDeleteStroked />}
-                          type="danger"
-                          block
-                          style={{ marginTop: "8px" }}
-                          onClick={() => deleteTable(tableData.id)}
-                        >
-                          {t("delete")}
-                        </Button>
-                      </div>
-                    }
-                    position="rightTop"
-                    showArrow
-                    trigger="click"
-                    style={{ width: "200px", wordBreak: "break-word" }}
-                  >
-                    <Button
-                      icon={<IconMore />}
-                      type="tertiary"
-                      size="small"
-                      style={{
-                        backgroundColor: "#808080b3",
-                        color: "white",
-                      }}
-                    />
-                  </Popover>
-                </div>
               </div>
             </div>
           </div>
