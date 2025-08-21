@@ -115,7 +115,7 @@ export default function TablesTab() {
         >
           <SortableList
             keyPrefix="tables-tab"
-            items={tables}
+            items={[...tables].sort((a, b) => a.name.localeCompare(b.name))}
             onChange={(newTables) => setTables(newTables)}
             afterChange={() => setSaveState(State.SAVING)}
             renderItem={(item) => <TableListItem table={item} />}

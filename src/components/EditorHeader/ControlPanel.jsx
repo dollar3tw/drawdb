@@ -70,7 +70,6 @@ import {
   useRevisionHistory,
 } from "../../hooks";
 import { enterFullscreen, exitFullscreen } from "../../utils/fullscreen";
-import { dataURItoBlob } from "../../utils/utils";
 import { IconAddArea, IconAddNote, IconAddTable } from "../../icons";
 import LayoutDropdown from "./LayoutDropdown";
 import Sidesheet from "./SideSheet/Sidesheet";
@@ -106,7 +105,7 @@ export default function ControlPanel({
     filename: `${title}_${new Date().toISOString()}`,
     extension: "",
   });
-  const [importFrom, setImportFrom] = useState(IMPORT_FROM.JSON);
+  const [importFrom, setImportFrom] = useState(IMPORT_FROM.DBML);
   const { saveState, setSaveState } = useSaveState();
   const { layout, setLayout } = useLayout();
   const { settings, setSettings } = useSettings();
@@ -554,7 +553,6 @@ export default function ControlPanel({
     }
   };
 
-  const fileImport = () => setModal(MODAL.IMPORT);
   const viewGrid = () =>
     setSettings((prev) => ({ ...prev, showGrid: !prev.showGrid }));
   const zoomIn = () =>
@@ -569,19 +567,6 @@ export default function ControlPanel({
       ...prev,
       showFieldSummary: !prev.showFieldSummary,
     }));
-  };
-  const copyAsImage = () => {
-    toPng(document.getElementById("canvas")).then(function (dataUrl) {
-      const blob = dataURItoBlob(dataUrl);
-      navigator.clipboard
-        .write([new ClipboardItem({ "image/png": blob })])
-        .then(() => {
-          Toast.success(t("copied_to_clipboard"));
-        })
-        .catch(() => {
-          Toast.error(t("oops_smth_went_wrong"));
-        });
-    });
   };
   const resetView = () =>
     setTransform((prev) => ({ ...prev, zoom: 1, pan: { x: 0, y: 0 } }));
@@ -823,10 +808,6 @@ export default function ControlPanel({
       import_from: {
         children: [
           {
-            function: fileImport,
-            name: "JSON",
-          },
-          {
             function: () => {
               setModal(MODAL.IMPORT);
               setImportFrom(IMPORT_FROM.DBML);
@@ -1019,29 +1000,63 @@ export default function ControlPanel({
           {
             name: "PNG",
             function: () => {
-              toPng(document.getElementById("canvas")).then(function (dataUrl) {
+              const canvas = document.getElementById("canvas");
+              const diagram = document.getElementById("diagram");
+              
+              // 設定選項以確保正確捕獲 SVG 內容
+              const options = {
+                backgroundColor: "#ffffff",
+                cacheBust: true,
+                filter: (node) => {
+                  // 過濾掉調試座標顯示
+                  return !node.classList?.contains('fixed');
+                },
+                pixelRatio: 2, // 提高圖片品質
+              };
+              
+              toPng(canvas, options).then(function (dataUrl) {
                 setExportData((prev) => ({
                   ...prev,
                   data: dataUrl,
                   extension: "png",
                 }));
+                setModal(MODAL.IMG);
+              }).catch(function (error) {
+                console.error('匯出 PNG 失敗:', error);
+                Toast.error(t("oops_smth_went_wrong"));
               });
-              setModal(MODAL.IMG);
             },
           },
           {
             name: "JPEG",
             function: () => {
-              toJpeg(document.getElementById("canvas"), { quality: 0.95 }).then(
+              const canvas = document.getElementById("canvas");
+              
+              // 設定選項以確保正確捕獲 SVG 內容
+              const options = {
+                quality: 0.95,
+                backgroundColor: "#ffffff",
+                cacheBust: true,
+                filter: (node) => {
+                  // 過濾掉調試座標顯示
+                  return !node.classList?.contains('fixed');
+                },
+                pixelRatio: 2, // 提高圖片品質
+              };
+              
+              toJpeg(canvas, options).then(
                 function (dataUrl) {
                   setExportData((prev) => ({
                     ...prev,
                     data: dataUrl,
                     extension: "jpeg",
                   }));
+                  setModal(MODAL.IMG);
                 },
-              );
-              setModal(MODAL.IMG);
+              ).catch(function (error) {
+                console.error('匯出 JPEG 失敗:', error);
+                Toast.error(t("oops_smth_went_wrong"));
+              });
             },
           },
           {
@@ -1105,7 +1120,20 @@ export default function ControlPanel({
             name: "PDF",
             function: () => {
               const canvas = document.getElementById("canvas");
-              toJpeg(canvas).then(function (dataUrl) {
+              
+              // 設定選項以確保正確捕獲 SVG 內容
+              const options = {
+                quality: 0.95,
+                backgroundColor: "#ffffff",
+                cacheBust: true,
+                filter: (node) => {
+                  // 過濾掉調試座標顯示
+                  return !node.classList?.contains('fixed');
+                },
+                pixelRatio: 2, // 提高圖片品質
+              };
+              
+              toJpeg(canvas, options).then(function (dataUrl) {
                 const doc = new jsPDF("l", "px", [
                   canvas.offsetWidth,
                   canvas.offsetHeight,
@@ -1119,6 +1147,9 @@ export default function ControlPanel({
                   canvas.offsetHeight,
                 );
                 doc.save(`${exportData.filename}.pdf`);
+              }).catch(function (error) {
+                console.error('匯出 PDF 失敗:', error);
+                Toast.error(t("oops_smth_went_wrong"));
               });
             },
           },
@@ -1235,10 +1266,6 @@ export default function ControlPanel({
       delete: {
         function: del,
         shortcut: "Del",
-      },
-      copy_as_image: {
-        function: copyAsImage,
-        shortcut: "Ctrl+Alt+C",
       },
     },
     view: {
@@ -1460,7 +1487,6 @@ export default function ControlPanel({
     },
   };
 
-  useHotkeys("mod+i", fileImport, { preventDefault: true });
   useHotkeys("mod+z", undo, { preventDefault: true });
   useHotkeys("mod+y", redo, { preventDefault: true });
   useHotkeys("mod+s", save, { preventDefault: true });
@@ -1482,7 +1508,6 @@ export default function ControlPanel({
   useHotkeys("mod+shift+s", saveDiagramAs, {
     preventDefault: true,
   });
-  useHotkeys("mod+alt+c", copyAsImage, { preventDefault: true });
   useHotkeys("mod+r", resetView, { preventDefault: true });
   useHotkeys("mod+alt+w", fitWindow, { preventDefault: true });
   useHotkeys("alt+e", toggleDBMLEditor, { preventDefault: true });

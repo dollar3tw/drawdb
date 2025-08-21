@@ -19,8 +19,19 @@ export function jsonToMermaid(obj) {
     }
   }
 
+  // 清理表格名稱，移除 schema 前綴以避免 Mermaid 解析錯誤
+  function cleanTableName(name) {
+    // 移除 schema 前綴 (如 public.tablename -> tablename)
+    if (name && name.includes('.')) {
+      return name.split('.').pop();
+    }
+    // 替換特殊字符以確保 Mermaid 相容性
+    return name ? name.replace(/[^a-zA-Z0-9_]/g, '_') : name;
+  }
+
   const mermaidEntities = obj.tables
     .map((table) => {
+      const cleanName = cleanTableName(table.name);
       const fields = table.fields
         .map((field) => {
           const fieldType =
@@ -31,20 +42,27 @@ export function jsonToMermaid(obj) {
             field.size !== ""
               ? "(" + field.size + ")"
               : "");
-          return `\t\t${fieldType} ${field.name}`;
+          // 清理欄位名稱中的特殊字符
+          const cleanFieldName = field.name.replace(/[^a-zA-Z0-9_]/g, '_');
+          return `\t\t${fieldType} ${cleanFieldName}`;
         })
         .join("\n");
-      return `\t${table.name} {\n${fields}\n\t}`;
+      return `\t${cleanName} {\n${fields}\n\t}`;
     })
     .join("\n\n");
 
   const mermaidRelationships = obj.relationships?.length
     ? obj.relationships
         .map((r) => {
-          const startTable = obj.tables.find(
+          const startTableOriginal = obj.tables.find(
             (t) => t.id === r.startTableId,
           ).name;
-          const endTable = obj.tables.find((t) => t.id === r.endTableId).name;
+          const endTableOriginal = obj.tables.find((t) => t.id === r.endTableId).name;
+          
+          // 清理表格名稱
+          const startTable = cleanTableName(startTableOriginal);
+          const endTable = cleanTableName(endTableOriginal);
+          
           return `\t${startTable} ${getMermaidRelationship(r.cardinality)} ${endTable} : references`;
         })
         .join("\n")

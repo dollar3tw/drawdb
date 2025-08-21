@@ -10,7 +10,10 @@ export default function SearchBar({ tables }) {
   const { t } = useTranslation();
 
   const treeData = useMemo(() => {
-    return tables.map(({ id, name: parentName, fields }, i) => {
+    // 先對表格按名稱排序
+    const sortedTables = [...tables].sort((a, b) => a.name.localeCompare(b.name));
+    
+    return sortedTables.map(({ id, name: parentName, fields }, i) => {
       const children = fields?.map(({ name }, j) => ({
         tableId: id,
         id: `${j}`,
