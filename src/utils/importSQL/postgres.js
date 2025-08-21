@@ -72,13 +72,36 @@ export function fromPostgres(ast, diagramDb = DB.GENERIC) {
   const relationships = [];
   const types = [];
   const enums = [];
+  
+  // 追蹤表格名稱以檢測重複
+  const tableNameCount = new Map(); // 記錄每個表格名稱出現的次數
 
   const parseSingleStatement = (e) => {
     try {
     if (e.type === "create") {
       if (e.keyword === "table") {
         const table = {};
-        table.name = e.table[0].table;
+        const schemaName = e.table[0].db;
+        const tableName = e.table[0].table;
+        
+        // 取得當前的出現次數（在增加之前）
+        const currentCount = tableNameCount.get(tableName) || 0;
+        
+        // 儲存表格的完整名稱（含 schema）
+        const fullName = schemaName ? `${schemaName}.${tableName}` : tableName;
+        
+        // 如果是第一次出現
+        if (currentCount === 0) {
+          table.name = tableName; // 使用簡單名稱
+          console.log(`第一次出現表格 ${tableName}，schema: ${schemaName || 'none'}，使用簡單名稱: ${table.name}`);
+        } else {
+          // 這是重複的表格名稱，第二個及之後才加上 schema 前綴
+          table.name = fullName;
+          console.log(`發現重複表格 ${tableName}（第 ${currentCount + 1} 次），使用完整名稱: ${table.name}`);
+        }
+        
+        // 更新出現次數
+        tableNameCount.set(tableName, currentCount + 1);
         table.comment = "";
         table.color = "#175e7a";
         table.fields = [];
@@ -164,7 +187,8 @@ export function fromPostgres(ast, diagramDb = DB.GENERIC) {
 
             table.fields.push(field);
           } else if (d.resource === "constraint") {
-            if (d.constraint_type === "primary key") {
+            // 使用小寫比較以處理大小寫差異
+            if (d.constraint_type && d.constraint_type.toLowerCase() === "primary key") {
               d.definition.forEach((c) => {
                 table.fields.forEach((f) => {
                   if (f.name === c.column.expr.value && !f.primary) {
@@ -172,7 +196,7 @@ export function fromPostgres(ast, diagramDb = DB.GENERIC) {
                   }
                 });
               });
-            } else if (d.constraint_type.toLowerCase() === "foreign key") {
+            } else if (d.constraint_type && d.constraint_type.toLowerCase() === "foreign key") {
               const relationship = {};
               const startTableId = table.id;
               const startTableName = e.table[0].table;
@@ -337,10 +361,54 @@ export function fromPostgres(ast, diagramDb = DB.GENERIC) {
       }
     } else if (e.type === "alter") {
       e.expr.forEach((expr) => {
+        // 處理 ALTER TABLE ADD CONSTRAINT PRIMARY KEY
         if (
           expr.action === "add" &&
-          expr.create_definitions.constraint_type.toLowerCase() ===
-            "foreign key"
+          expr.create_definitions &&
+          expr.create_definitions.constraint_type &&
+          expr.create_definitions.constraint_type.toLowerCase() === "primary key"
+        ) {
+          // 處理可能包含 schema 的表名（如 public.table_name）
+          const tableName = e.table[0].table;
+          const schemaName = e.table[0].db;
+          const fullName = schemaName ? `${schemaName}.${tableName}` : tableName;
+          
+          // 根據重複情況決定要尋找的表格名稱
+          let table;
+          const duplicateCount = tableNameCount.get(tableName) || 0;
+          
+          if (duplicateCount <= 1) {
+            // 沒有重複，使用簡單名稱
+            table = tables.find((t) => t.name === tableName);
+          } else {
+            // 有重複，需要使用完整名稱尋找
+            table = tables.find((t) => t.name === fullName);
+            if (!table) {
+              // 如果找不到，可能第一個表格還沒更新名稱，再試試簡單名稱
+              table = tables.find((t) => t.name === tableName);
+            }
+          }
+          
+          if (table && expr.create_definitions.definition) {
+            // 設定 PRIMARY KEY 欄位
+            expr.create_definitions.definition.forEach((c) => {
+              // 處理不同的欄位格式
+              const columnName = c.column?.expr?.value || c.column?.column || c.column || c;
+              
+              table.fields.forEach((f) => {
+                if (f.name === columnName && !f.primary) {
+                  f.primary = true;
+                }
+              });
+            });
+          }
+        }
+        // 處理 ALTER TABLE ADD CONSTRAINT FOREIGN KEY
+        else if (
+          expr.action === "add" &&
+          expr.create_definitions &&
+          expr.create_definitions.constraint_type &&
+          expr.create_definitions.constraint_type.toLowerCase() === "foreign key"
         ) {
           const relationship = {};
           const startTableName = e.table[0].table;

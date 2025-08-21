@@ -111,7 +111,8 @@ export function fromMSSQL(ast, diagramDb = DB.GENERIC) {
 
             table.fields.push(field);
           } else if (d.resource === "constraint") {
-            if (d.constraint_type === "primary key") {
+            // 使用小寫比較以處理大小寫差異
+            if (d.constraint_type && d.constraint_type.toLowerCase() === "primary key") {
               d.definition.forEach((c) => {
                 table.fields.forEach((f) => {
                   if (f.name === c.column && !f.primary) {
@@ -119,7 +120,7 @@ export function fromMSSQL(ast, diagramDb = DB.GENERIC) {
                   }
                 });
               });
-            } else if (d.constraint_type.toLowerCase() === "foreign key") {
+            } else if (d.constraint_type && d.constraint_type.toLowerCase() === "foreign key") {
               const relationship = {};
               const startTableId = table.id;
               const startTableName = e.table[0].table;
@@ -193,10 +194,34 @@ export function fromMSSQL(ast, diagramDb = DB.GENERIC) {
       }
     } else if (e.type === "alter") {
       e.expr.forEach((expr) => {
+        // 處理 ALTER TABLE ADD CONSTRAINT PRIMARY KEY
         if (
           expr.action === "add" &&
-          expr.create_definitions.constraint_type.toLowerCase() ===
-            "foreign key"
+          expr.create_definitions &&
+          expr.create_definitions.constraint_type &&
+          expr.create_definitions.constraint_type.toLowerCase() === "primary key"
+        ) {
+          const tableName = e.table[0].table;
+          const table = tables.find((t) => t.name === tableName);
+          
+          if (table && expr.create_definitions.definition) {
+            // 設定 PRIMARY KEY 欄位
+            expr.create_definitions.definition.forEach((c) => {
+              const columnName = c.column;
+              table.fields.forEach((f) => {
+                if (f.name === columnName && !f.primary) {
+                  f.primary = true;
+                }
+              });
+            });
+          }
+        }
+        // 處理 ALTER TABLE ADD CONSTRAINT FOREIGN KEY
+        else if (
+          expr.action === "add" &&
+          expr.create_definitions &&
+          expr.create_definitions.constraint_type &&
+          expr.create_definitions.constraint_type.toLowerCase() === "foreign key"
         ) {
           const relationship = {};
           const startTableName = e.table[0].table;

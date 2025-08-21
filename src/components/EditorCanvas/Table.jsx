@@ -74,6 +74,8 @@ export default function Table(props) {
         element: ObjectType.TABLE,
         id: tableData.id,
         open: true,
+        activeKey: tableData.id, // 設置 activeKey 以便側邊欄的 Collapse 能正確展開
+        fromSidebar: false, // 標記這不是從側邊欄觸發的
       }));
       if (selectedElement.currentTab !== Tab.TABLES) return;
       document

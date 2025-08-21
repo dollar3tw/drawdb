@@ -59,13 +59,14 @@ export default function Modal({
   setExportData,
   importDb,
   importFrom,
+  recordDetailedRevision,
 }) {
   const { t, i18n } = useTranslation();
   const { tables, relationships, setTables, setRelationships, database, setDatabase } = useDiagram();
-  const { setNotes } = useNotes();
-  const { setAreas } = useAreas();
-  const { setTypes } = useTypes();
-  const { setEnums } = useEnums();
+  const { notes, setNotes } = useNotes();
+  const { areas, setAreas } = useAreas();
+  const { types, setTypes } = useTypes();
+  const { enums, setEnums } = useEnums();
   const { setTransform } = useTransform();
   const { setUndoStack, setRedoStack } = useUndoRedo();
   const [uncontrolledTitle, setUncontrolledTitle] = useState(title);
@@ -137,7 +138,7 @@ export default function Modal({
       });
   };
 
-  const parseSQLAndLoadDiagram = () => {
+  const parseSQLAndLoadDiagram = async () => {
     const targetDatabase = database === DB.GENERIC ? importDb : database;
 
     // 先進行預處理
@@ -197,6 +198,16 @@ export default function Modal({
           fieldCount: t.fields.length
         })));
         
+        // 保存當前狀態到 undo stack
+        const currentState = {
+          tables: tables,
+          relationships: relationships,
+          notes: notes,
+          areas: areas,
+          types: types,
+          enums: enums,
+        };
+        
         setTables(diagramData.tables);
         setRelationships(diagramData.relationships);
         setTransform((prev) => ({ ...prev, pan: { x: 0, y: 0 } }));
@@ -204,12 +215,52 @@ export default function Modal({
         setAreas([]);
         if (databases[database].hasTypes) setTypes(diagramData.types ?? []);
         if (databases[database].hasEnums) setEnums(diagramData.enums ?? []);
-        setUndoStack([]);
+        
+        // 將匯入操作加入 undo stack
+        setUndoStack([{
+          action: "IMPORT",
+          timestamp: Date.now(),
+          data: currentState,
+          description: "匯入 SQL 檔案（覆寫）"
+        }]);
         setRedoStack([]);
+        
+        // 記錄到修訂歷程（如果有圖表 ID）
+        if (diagramId && recordDetailedRevision) {
+          const importDetails = {
+            tables: diagramData.tables.map(t => t.name),
+            relationships: diagramData.relationships.length,
+            types: diagramData.types?.length || 0,
+            enums: diagramData.enums?.length || 0,
+          };
+          await recordDetailedRevision(
+            diagramId, 
+            currentState, 
+            {
+              tables: diagramData.tables,
+              relationships: diagramData.relationships,
+              notes: [],
+              areas: [],
+              types: diagramData.types || [],
+              enums: diagramData.enums || [],
+            },
+            `IMPORT_SQL_OVERWRITE: 匯入 ${diagramData.tables.length} 個表格, ${diagramData.relationships.length} 個關聯`
+          );
+        }
       } else {
         // 使用智能合併
         const currentTables = tables || [];
         const currentRelationships = relationships || [];
+        
+        // 保存當前狀態到 undo stack
+        const currentState = {
+          tables: currentTables,
+          relationships: currentRelationships,
+          notes: notes,
+          areas: areas,
+          types: types,
+          enums: enums,
+        };
         
         const existingData = {
           tables: currentTables,
@@ -245,8 +296,38 @@ export default function Modal({
         setRelationships(mergeResult.data.relationships);
         if (databases[database].hasTypes) setTypes(mergeResult.data.types);
         if (databases[database].hasEnums) setEnums(mergeResult.data.enums);
+        
+        // 只有在有變更時才加入 undo stack
+        if (summary !== "沒有變更") {
+          setUndoStack((prev) => [...prev, {
+            action: "IMPORT",
+            timestamp: Date.now(),
+            data: currentState,
+            description: `匯入 SQL 檔案（合併）：${summary}`
+          }]);
+          setRedoStack([]);
+          
+          // 記錄到修訂歷程（如果有圖表 ID）
+          if (diagramId && recordDetailedRevision) {
+            await recordDetailedRevision(
+              diagramId,
+              currentState,
+              {
+                tables: mergeResult.data.tables,
+                relationships: mergeResult.data.relationships,
+                notes: notes,
+                areas: areas,
+                types: mergeResult.data.types || [],
+                enums: mergeResult.data.enums || [],
+              },
+              `IMPORT_SQL_MERGE: ${summary}`
+            );
+          }
+        }
       }
 
+      // 匯入成功後不立即觸發儲存，避免 ID 為 0 時的錯誤
+      // 使用者可以手動儲存或等待其他操作觸發儲存
       setModal(MODAL.NONE);
     } catch (e) {
       console.log(e);

@@ -172,7 +172,8 @@ export function fromSQLite(ast, diagramDb = DB.GENERIC) {
               );
             }
           } else if (d.resource === "constraint") {
-            if (d.constraint_type === "primary key") {
+            // 使用小寫比較以處理大小寫差異
+            if (d.constraint_type && d.constraint_type.toLowerCase() === "primary key") {
               d.definition.forEach((c) => {
                 table.fields.forEach((f) => {
                   if (f.name === c.column && !f.primary) {
@@ -180,7 +181,7 @@ export function fromSQLite(ast, diagramDb = DB.GENERIC) {
                   }
                 });
               });
-            } else if (d.constraint_type.toLowerCase() === "foreign key") {
+            } else if (d.constraint_type && d.constraint_type.toLowerCase() === "foreign key") {
               addRelationshipFromReferenceDef(
                 table,
                 d.definition[0].column,

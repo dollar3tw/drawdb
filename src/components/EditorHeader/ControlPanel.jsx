@@ -67,6 +67,7 @@ import {
   useAreas,
   useEnums,
   useFullscreen,
+  useRevisionHistory,
 } from "../../hooks";
 import { enterFullscreen, exitFullscreen } from "../../utils/fullscreen";
 import { dataURItoBlob } from "../../utils/utils";
@@ -109,6 +110,7 @@ export default function ControlPanel({
   const { saveState, setSaveState } = useSaveState();
   const { layout, setLayout } = useLayout();
   const { settings, setSettings } = useSettings();
+  const { recordDetailedRevision } = useRevisionHistory();
   const {
     relationships,
     tables,
@@ -143,6 +145,35 @@ export default function ControlPanel({
     if (undoStack.length === 0) return;
     const a = undoStack[undoStack.length - 1];
     setUndoStack((prev) => prev.filter((_, i) => i !== prev.length - 1));
+
+    // 處理匯入操作的撤銷
+    if (a.action === "IMPORT") {
+      // 保存當前狀態到 redo stack
+      const currentState = {
+        action: "IMPORT",
+        timestamp: Date.now(),
+        data: {
+          tables: tables,
+          relationships: relationships,
+          notes: notes,
+          areas: areas,
+          types: types,
+          enums: enums,
+        },
+        description: a.description
+      };
+      
+      // 恢復到匯入前的狀態
+      setTables(a.data.tables || []);
+      setRelationships(a.data.relationships || []);
+      setNotes(a.data.notes || []);
+      setAreas(a.data.areas || []);
+      setTypes(a.data.types || []);
+      setEnums(a.data.enums || []);
+      
+      setRedoStack((prev) => [...prev, currentState]);
+      return;
+    }
 
     if (a.bulk) {
       for (const element of a.elements) {
@@ -318,6 +349,35 @@ export default function ControlPanel({
     if (redoStack.length === 0) return;
     const a = redoStack[redoStack.length - 1];
     setRedoStack((prev) => prev.filter((e, i) => i !== prev.length - 1));
+
+    // 處理匯入操作的重做
+    if (a.action === "IMPORT") {
+      // 保存當前狀態到 undo stack
+      const currentState = {
+        action: "IMPORT",
+        timestamp: Date.now(),
+        data: {
+          tables: tables,
+          relationships: relationships,
+          notes: notes,
+          areas: areas,
+          types: types,
+          enums: enums,
+        },
+        description: a.description
+      };
+      
+      // 恢復到重做的狀態
+      setTables(a.data.tables || []);
+      setRelationships(a.data.relationships || []);
+      setNotes(a.data.notes || []);
+      setAreas(a.data.areas || []);
+      setTypes(a.data.types || []);
+      setEnums(a.data.enums || []);
+      
+      setUndoStack((prev) => [...prev, currentState]);
+      return;
+    }
 
     if (a.bulk) {
       for (const element of a.elements) {
@@ -1463,6 +1523,7 @@ export default function ControlPanel({
         setModal={setModal}
         importFrom={importFrom}
         importDb={importDb}
+        recordDetailedRevision={recordDetailedRevision}
       />
       <Sidesheet
         type={sidesheet}
