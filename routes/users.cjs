@@ -48,8 +48,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
-    // 只有本人或 root 可以查看詳細資訊
-    if (req.user.id !== parseInt(id) && req.user.role !== 'root') {
+    // 只有本人或 admin 可以查看詳細資訊
+    if (req.user.id !== parseInt(id) && req.user.role !== 'admin') {
       return res.status(403).json({ error: '無權限查看此使用者資訊' });
     }
     

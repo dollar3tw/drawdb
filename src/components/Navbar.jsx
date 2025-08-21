@@ -15,13 +15,13 @@ export default function Navbar() {
   const { user, logout, isAuthenticated, isMitAdmin } = useAuth();
 
   const roleColors = {
-    mitadmin: 'red',
+    admin: 'red',
     editor: 'orange',
     user: 'blue'
   };
 
   const roleLabels = {
-    mitadmin: '最高管理者',
+    admin: '最高管理者',
     editor: '編輯者',
     user: '使用者'
   };

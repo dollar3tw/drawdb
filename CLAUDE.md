@@ -79,6 +79,7 @@ server.cjs        # 整合式服務主檔案
 ### 資料庫架構
 ```sql
 - users (id, username, email, password, role, display_name)
+  - role: 'admin' (最高管理者), 'editor' (編輯者), 'user' (一般用戶)
 - diagrams (id, user_id, diagram_data, is_public, share_id)
 - templates (id, name, thumbnail, diagram_data)
 - user_sessions (id, user_id, created_at, expires_at)

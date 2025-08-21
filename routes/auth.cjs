@@ -201,7 +201,7 @@ router.put('/users/:id/role', authenticateToken, requireRoot, async (req, res) =
     const { id } = req.params;
     const { role } = req.body;
 
-    if (!['root', 'editor', 'user'].includes(role)) {
+    if (!['admin', 'editor', 'user'].includes(role)) {
       return res.status(400).json({ error: '無效的角色' });
     }
 

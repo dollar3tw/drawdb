@@ -100,10 +100,6 @@ const LoginModal = ({ visible, onCancel }) => {
           >
             使用 Synology SSO 登入
           </Button>
-          
-          <div style={{ marginTop: 16, textAlign: 'center', fontSize: 12, color: '#666' }}>
-            預設管理員帳號：mitadmin / mitadmin123
-          </div>
         </TabPane>
 
         <TabPane tab="註冊" itemKey="register">

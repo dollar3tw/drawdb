@@ -43,7 +43,7 @@ router.get('/', optionalAuth, async (req, res) => {
         diagrams = allDiagrams.filter(d => d.is_collaborative || d.permission_type === 'editor');
       } else {
         // 默認返回所有有權限的圖表
-        if (req.user.role === 'root') {
+        if (req.user.role === 'admin') {
           // root 可以看到所有圖表
           diagrams = await dbHelpers.getAllDiagrams();
         } else {
@@ -118,8 +118,8 @@ router.delete('/:id', authenticateToken, checkDiagramPermission, requireDeletePe
 
     let changes;
 
-    // 如果是 root，使用特殊的刪除函數
-    if (req.user.role === 'root') {
+    // 如果是 admin，使用特殊的刪除函數
+    if (req.user.role === 'admin') {
       changes = await dbHelpers.deleteDiagramByAdmin(id, req.user.id);
     } else {
       changes = await dbHelpers.deleteDiagram(id);

@@ -146,8 +146,8 @@ router.get('/users/:userId/collaboration-history', authenticateToken, async (req
   try {
     const { userId } = req.params;
     
-    // 只有本人或 root 可以查看
-    if (req.user.id !== parseInt(userId) && req.user.role !== 'root') {
+    // 只有本人或 admin 可以查看
+    if (req.user.id !== parseInt(userId) && req.user.role !== 'admin') {
       return res.status(403).json({ error: '無權限查看此使用者的共編歷史' });
     }
     

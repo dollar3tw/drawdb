@@ -23,13 +23,13 @@ const UserManagement = ({ visible, onCancel }) => {
   const { API_BASE_URL, user: currentUser } = useAuth();
 
   const roleColors = {
-    mitadmin: 'red',
+    admin: 'red',
     editor: 'orange',
     user: 'blue'
   };
 
   const roleLabels = {
-    mitadmin: '最高管理者',
+    admin: '最高管理者',
     editor: '編輯者',
     user: '使用者'
   };
@@ -111,8 +111,8 @@ const UserManagement = ({ visible, onCancel }) => {
           <Select.Option value="editor">
             <Tag color={roleColors.editor}>{roleLabels.editor}</Tag>
           </Select.Option>
-          <Select.Option value="mitadmin">
-            <Tag color={roleColors.mitadmin}>{roleLabels.mitadmin}</Tag>
+          <Select.Option value="admin">
+            <Tag color={roleColors.admin}>{roleLabels.admin}</Tag>
           </Select.Option>
         </Select>
       ),

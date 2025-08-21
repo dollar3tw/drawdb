@@ -93,7 +93,7 @@ const initDb = (callback = () => {}) => {
       username TEXT UNIQUE NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('root', 'editor', 'user')),
+      role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'editor', 'user')),
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       lastLogin DATETIME,
       isActive INTEGER DEFAULT 1
@@ -105,7 +105,7 @@ const initDb = (callback = () => {}) => {
       console.log("Table 'users' created or already exists.");
       
       // Create default root user if not exists
-      db.get("SELECT id FROM users WHERE role = 'root'", (err, row) => {
+      db.get("SELECT id FROM users WHERE role = 'admin'", (err, row) => {
         if (err) {
           console.error("Error checking for root user:", err.message);
         } else if (!row) {
@@ -700,7 +700,7 @@ async function deleteUser(id) {
 
       // 1. 找到 root 使用者 ID
       const rootUser = await new Promise((resolve, reject) => {
-        db.get(`SELECT id FROM users WHERE role = 'root' OR role = 'mitadmin' LIMIT 1`, (err, row) => {
+        db.get(`SELECT id FROM users WHERE role = 'admin' LIMIT 1`, (err, row) => {
           if (err) reject(err);
           else resolve(row);
         });
@@ -914,7 +914,7 @@ async function deleteDiagramByAdmin(diagramId, adminUserId) {
     // First check if the admin user has mitadmin role
     getUserById(adminUserId)
       .then(admin => {
-        if (!admin || admin.role !== 'root') {
+        if (!admin || admin.role !== 'admin') {
           reject(new Error('Unauthorized: Only root can delete diagrams'));
           return;
         }

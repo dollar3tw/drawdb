@@ -47,11 +47,12 @@ const requireRole = (roles) => {
   };
 };
 
-// 檢查是否為 root
-const requireRoot = requireRole(['root']);
+// 檢查是否為 admin
+const requireAdmin = requireRole(['admin']);
+const requireRoot = requireAdmin; // 向後相容
 
 // 檢查是否為編輯者或以上權限
-const requireEditor = requireRole(['root', 'editor']);
+const requireEditor = requireRole(['admin', 'editor']);
 
 // 可選的認證中間件（不強制要求登入）
 const optionalAuth = async (req, res, next) => {
@@ -81,8 +82,9 @@ const optionalAuth = async (req, res, next) => {
 module.exports = {
   authenticateToken,
   requireRole,
-  requireRoot,
-  requireMitAdmin: requireRoot, // 向後相容
+  requireAdmin,
+  requireRoot, // 向後相容
+  requireMitAdmin: requireAdmin, // 向後相容
   requireEditor,
   optionalAuth,
   JWT_SECRET
