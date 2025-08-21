@@ -158,6 +158,7 @@ export default function Table(props) {
                    : "bg-zinc-800 text-zinc-200"
                } ${isSelected ? "border-solid border-blue-500" : borderColor}`}
           style={{ direction: "ltr" }}
+          onClick={openEditor}
         >
           <div
             className="h-[10px] w-full rounded-t-md"

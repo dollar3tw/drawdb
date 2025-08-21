@@ -183,7 +183,8 @@ export default function Canvas() {
    * @param {ObjectType[keyof ObjectType]} type
    */
   const handlePointerDownOnElement = (e, id, type) => {
-    if (selectedElement.open && !layout.sidebar) return;
+    // 移除這個限制，允許在編輯器打開時仍可點擊其他表格
+    // if (selectedElement.open && !layout.sidebar) return;
 
     if (!e.isPrimary) return;
 
