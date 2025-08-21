@@ -10,7 +10,7 @@ import {
   IconMinus,
   IconKeyStroked,
 } from "@douyinfe/semi-icons";
-import { Popover, Tag, SideSheet, Input } from "@douyinfe/semi-ui";
+import { SideSheet, Input } from "@douyinfe/semi-ui";
 import { useLayout, useSettings, useDiagram, useSelect, useUndoRedo } from "../../hooks";
 import TableInfo from "../EditorSidePanel/TablesTab/TableInfo";
 import { useTranslation } from "react-i18next";
@@ -210,84 +210,7 @@ export default function Table(props) {
               </div>
             </div>
           </div>
-          {tableData.fields.map((e, i) => {
-            return settings.showFieldSummary ? (
-              <Popover
-                key={i}
-                content={
-                  <div className="popover-theme">
-                    <div
-                      className="flex justify-between items-center pb-2"
-                      style={{ direction: "ltr" }}
-                    >
-                      <p className="me-4 font-bold">{e.name}</p>
-                      <p
-                        className={
-                          "ms-4 font-mono " + dbToTypes[database][e.type].color
-                        }
-                      >
-                        {e.type +
-                          ((dbToTypes[database][e.type].isSized ||
-                            dbToTypes[database][e.type].hasPrecision) &&
-                          e.size &&
-                          e.size !== ""
-                            ? "(" + e.size + ")"
-                            : "")}
-                      </p>
-                    </div>
-                    <hr />
-                    {e.primary && (
-                      <Tag color="blue" className="me-2 my-2">
-                        {t("primary")}
-                      </Tag>
-                    )}
-                    {e.unique && (
-                      <Tag color="amber" className="me-2 my-2">
-                        {t("unique")}
-                      </Tag>
-                    )}
-                    {e.notNull && (
-                      <Tag color="purple" className="me-2 my-2">
-                        {t("not_null")}
-                      </Tag>
-                    )}
-                    {e.increment && (
-                      <Tag color="green" className="me-2 my-2">
-                        {t("autoincrement")}
-                      </Tag>
-                    )}
-                    <p>
-                      <strong>{t("default_value")}: </strong>
-                      {e.default === "" ? t("not_set") : e.default}
-                    </p>
-                    <p>
-                      <strong>{t("comment")}: </strong>
-                      {e.comment === "" ? (
-                        t("not_set")
-                      ) : (
-                        <div className="mt-1 p-2 bg-gray-50 rounded text-sm whitespace-pre-wrap break-words">
-                          {e.comment}
-                        </div>
-                      )}
-                    </p>
-                  </div>
-                }
-                position="right"
-                showArrow
-                style={{
-                  ...(isRtl(i18n.language)
-                    ? { direction: "rtl" }
-                    : { direction: "ltr" }),
-                  width: "300px",
-                  maxWidth: "400px"
-                }}
-              >
-                {field(e, i)}
-              </Popover>
-            ) : (
-              field(e, i)
-            );
-          })}
+          {tableData.fields.map((e, i) => field(e, i))}
         </div>
       </foreignObject>
       <SideSheet
@@ -316,7 +239,16 @@ export default function Table(props) {
 
   function field(fieldData, index) {
     const hasComment = fieldData.comment && fieldData.comment.trim() !== "";
-    const fieldHeight = tableFieldHeight; // 固定高度，因為現在是單行顯示
+    const fieldHeight = tableFieldHeight;
+    
+    // 取得資料型別顯示
+    const typeDisplay = fieldData.type +
+      ((dbToTypes[database][fieldData.type]?.isSized ||
+        dbToTypes[database][fieldData.type]?.hasPrecision) &&
+      fieldData.size &&
+      fieldData.size !== ""
+        ? "(" + fieldData.size + ")"
+        : "");
     
     return (
       <div
@@ -324,7 +256,7 @@ export default function Table(props) {
           index === tableData.fields.length - 1
             ? ""
             : "border-b border-gray-400"
-        } group px-2 py-1 flex justify-between items-center w-full overflow-hidden`}
+        } group px-2 py-1 w-full overflow-hidden`}
         style={{ height: `${fieldHeight}px` }}
         onPointerEnter={(e) => {
           if (!e.isPrimary) return;
@@ -350,52 +282,73 @@ export default function Table(props) {
           e.target.releasePointerCapture(e.pointerId);
         }}
       >
-        <div
-          className={`${
-            hoveredField === index ? "text-zinc-400" : ""
-          } flex items-center gap-2 overflow-hidden flex-1`}
-        >
-          <button
-            className="shrink-0 w-[10px] h-[10px] bg-[#2f68adcc] rounded-full"
-            onPointerDown={(e) => {
-              if (!e.isPrimary) return;
+        {/* 第一行：欄位名稱、資料型別、主鍵、非空標記 */}
+        <div className="flex items-center justify-between h-6">
+          <div
+            className={`${
+              hoveredField === index ? "text-zinc-400" : ""
+            } flex items-center gap-2 overflow-hidden flex-1`}
+          >
+            <button
+              className="shrink-0 w-[10px] h-[10px] bg-[#2f68adcc] rounded-full"
+              onPointerDown={(e) => {
+                if (!e.isPrimary) return;
 
-              handleGripField();
-              setLinkingLine((prev) => ({
-                ...prev,
-                startFieldId: fieldData.id,
-                startTableId: tableData.id,
-                startX: tableData.x + 15,
-                startY:
-                  tableData.y +
-                  index * fieldHeight +
-                  tableHeaderHeight +
-                  tableColorStripHeight +
-                  12,
-                endX: tableData.x + 15,
-                endY:
-                  tableData.y +
-                  index * fieldHeight +
-                  tableHeaderHeight +
-                  tableColorStripHeight +
-                  12,
-              }));
-            }}
-          />
-          <div className="flex items-center gap-2 overflow-hidden flex-1">
+                handleGripField();
+                setLinkingLine((prev) => ({
+                  ...prev,
+                  startFieldId: fieldData.id,
+                  startTableId: tableData.id,
+                  startX: tableData.x + 15,
+                  startY:
+                    tableData.y +
+                    index * fieldHeight +
+                    tableHeaderHeight +
+                    tableColorStripHeight +
+                    24, // 調整為欄位中心
+                  endX: tableData.x + 15,
+                  endY:
+                    tableData.y +
+                    index * fieldHeight +
+                    tableHeaderHeight +
+                    tableColorStripHeight +
+                    24,
+                }));
+              }}
+            />
+            {/* 欄位名稱 */}
             <span className="font-medium whitespace-nowrap">
               {fieldData.name}
             </span>
-            {hasComment && (
-              <span className="text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap">
-                - {fieldData.comment}
-              </span>
+            {/* 資料型別 */}
+            <span className={`text-xs font-mono ${
+              dbToTypes[database][fieldData.type]?.color || "text-gray-500"
+            }`}>
+              {typeDisplay}
+            </span>
+          </div>
+          {/* 右側標記：主鍵和非空 */}
+          <div className="flex items-center gap-1 ml-2">
+            {fieldData.primary && (
+              <IconKeyStroked 
+                size="small" 
+                className="text-amber-500"
+                style={{ width: "14px", height: "14px" }}
+              />
+            )}
+            {!fieldData.notNull && (
+              <span className="text-xs text-gray-400">NULL</span>
             )}
           </div>
         </div>
-        <div className="text-zinc-400">
-          {/* 移除 hover 時的刪除按鈕 */}
-        </div>
+        {/* 第二行：註解 */}
+        {hasComment && (
+          <div className="h-5 flex items-center">
+            <span className="text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap pl-3">
+              {fieldData.comment}
+            </span>
+          </div>
+        )}
       </div>
     );
   }
