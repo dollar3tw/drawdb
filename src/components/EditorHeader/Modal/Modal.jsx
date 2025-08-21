@@ -11,9 +11,7 @@ import { getDiagramByIdAPI, getAllDiagramsAPI } from "../../../data/db";
 import {
   useAreas,
   useEnums,
-  useLayout,
   useNotes,
-  useSettings,
   useDiagram,
   useTransform,
   useTypes,
@@ -39,6 +37,8 @@ import CodeEditor from "../../CodeEditor";
 import { useTranslation } from "react-i18next";
 import { importSQL } from "../../../utils/importSQL";
 import { databases } from "../../../data/databases";
+import { preprocessSQL, detectUnsupportedStatements } from "../../../utils/importSQL/preprocessor";
+import { smartMerge, generateChangeSummary } from "../../../utils/importSQL/smartMerge";
 import { isRtl } from "../../../i18n/utils/rtl";
 
 const extensionToLanguage = {
@@ -61,7 +61,7 @@ export default function Modal({
   importFrom,
 }) {
   const { t, i18n } = useTranslation();
-  const { setTables, setRelationships, database, setDatabase } = useDiagram();
+  const { tables, relationships, setTables, setRelationships, database, setDatabase } = useDiagram();
   const { setNotes } = useNotes();
   const { setAreas } = useAreas();
   const { setTypes } = useTypes();
@@ -140,23 +140,38 @@ export default function Modal({
   const parseSQLAndLoadDiagram = () => {
     const targetDatabase = database === DB.GENERIC ? importDb : database;
 
+    // 先進行預處理
+    let processedSQL = importSource.src;
+    const unsupportedCheck = detectUnsupportedStatements(processedSQL);
+    
+    if (unsupportedCheck.hasUnsupported) {
+      console.log("發現不支援的語句，正在自動過濾：", unsupportedCheck.unsupportedTypes);
+      processedSQL = preprocessSQL(processedSQL);
+      
+      if (processedSQL.trim() === '') {
+        setError({
+          type: STATUS.ERROR,
+          message: `SQL 檔案不包含支援的表格定義語句（CREATE TABLE）。請確保檔案包含資料庫結構定義。`,
+        });
+        return;
+      }
+    }
+
     let ast = null;
     try {
       if (targetDatabase === DB.ORACLESQL) {
         const oracleParser = new OracleParser();
-
-        ast = oracleParser.parse(importSource.src);
+        ast = oracleParser.parse(processedSQL);
       } else {
         const parser = new Parser();
-
-        ast = parser.astify(importSource.src, {
+        ast = parser.astify(processedSQL, {
           database: targetDatabase,
         });
       }
     } catch (error) {
       const message = error.location
         ? `${error.name} [Ln ${error.location.start.line}, Col ${error.location.start.column}]: ${error.message}`
-        : error.message;
+        : `解析錯誤：${error.message}`;
 
       setError({ type: STATUS.ERROR, message });
       return;
@@ -170,6 +185,18 @@ export default function Modal({
       );
 
       if (importSource.overwrite) {
+        // 完全覆寫
+        console.log('覆寫模式 - 匯入的圖表資料:', diagramData);
+        console.log('表格數:', diagramData.tables.length);
+        console.log('關聯數:', diagramData.relationships.length);
+        console.log('前5個表格:', diagramData.tables.slice(0, 5).map(t => ({
+          name: t.name, 
+          id: t.id, 
+          x: t.x, 
+          y: t.y, 
+          fieldCount: t.fields.length
+        })));
+        
         setTables(diagramData.tables);
         setRelationships(diagramData.relationships);
         setTransform((prev) => ({ ...prev, pan: { x: 0, y: 0 } }));
@@ -180,21 +207,52 @@ export default function Modal({
         setUndoStack([]);
         setRedoStack([]);
       } else {
-        setTables((prev) => [...prev, ...diagramData.tables]);
-        setRelationships((prev) =>
-          [...prev, ...diagramData.relationships].map((r, i) => ({
-            ...r,
-            id: i,
-          })),
-        );
+        // 使用智能合併
+        const currentTables = tables || [];
+        const currentRelationships = relationships || [];
+        
+        const existingData = {
+          tables: currentTables,
+          relationships: currentRelationships,
+          types: [],
+          enums: [],
+          areas: [],
+          notes: [],
+        };
+        
+        const mergeResult = smartMerge(existingData, diagramData);
+        
+        // 顯示變更摘要
+        const summary = generateChangeSummary(mergeResult.changes);
+        if (summary !== "沒有變更") {
+          Toast.success(`匯入完成：${summary}`);
+        } else {
+          Toast.info("沒有新的變更需要匯入");
+        }
+        
+        // 應用合併結果
+        console.log('智能合併結果:', mergeResult.data);
+        console.log('將設定表格數:', mergeResult.data.tables.length);
+        console.log('前5個表格:', mergeResult.data.tables.slice(0, 5).map(t => ({
+          name: t.name, 
+          id: t.id, 
+          x: t.x, 
+          y: t.y, 
+          fieldCount: t.fields.length
+        })));
+        
+        setTables(mergeResult.data.tables);
+        setRelationships(mergeResult.data.relationships);
+        if (databases[database].hasTypes) setTypes(mergeResult.data.types);
+        if (databases[database].hasEnums) setEnums(mergeResult.data.enums);
       }
 
       setModal(MODAL.NONE);
     } catch (e) {
-      console.log(e)
+      console.log(e);
       setError({
         type: STATUS.ERROR,
-        message: `Please check for syntax errors or let us know about the error.`,
+        message: `解析錯誤：請檢查 SQL 語法或回報此問題。錯誤詳情：${e.message}`,
       });
     }
   };

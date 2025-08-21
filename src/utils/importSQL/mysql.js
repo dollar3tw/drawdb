@@ -34,6 +34,8 @@ export function fromMySQL(ast, diagramDb = DB.GENERIC) {
         table.fields = [];
         table.indices = [];
         table.id = nanoid();
+        table.x = 0;
+        table.y = 0;
         e.create_definitions.forEach((d) => {
           if (d.resource === "column") {
             const field = {};

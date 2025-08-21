@@ -25,6 +25,7 @@ export function fromPostgres(ast, diagramDb = DB.GENERIC) {
   const enums = [];
 
   const parseSingleStatement = (e) => {
+    try {
     if (e.type === "create") {
       if (e.keyword === "table") {
         const table = {};
@@ -34,6 +35,8 @@ export function fromPostgres(ast, diagramDb = DB.GENERIC) {
         table.fields = [];
         table.indices = [];
         table.id = nanoid();
+        table.x = 0;
+        table.y = 0;
         e.create_definitions.forEach((d) => {
           const field = {};
           if (d.resource === "column") {
@@ -349,12 +352,21 @@ export function fromPostgres(ast, diagramDb = DB.GENERIC) {
         }
       });
     }
+    } catch (error) {
+      console.warn(`跳過無法解析的語句:`, e?.type || 'unknown', error.message);
+      // 繼續處理其他語句而不中斷
+    }
   };
 
-  if (Array.isArray(ast)) {
-    ast.forEach((e) => parseSingleStatement(e));
-  } else {
-    parseSingleStatement(ast);
+  try {
+    if (Array.isArray(ast)) {
+      ast.forEach((e) => parseSingleStatement(e));
+    } else {
+      parseSingleStatement(ast);
+    }
+  } catch (error) {
+    console.error('PostgreSQL 解析發生嚴重錯誤:', error);
+    throw new Error(`解析失敗: ${error.message}`);
   }
 
   relationships.forEach((r, i) => (r.id = i));
