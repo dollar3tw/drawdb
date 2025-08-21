@@ -3,6 +3,55 @@ import { Cardinality, DB } from "../../data/constants";
 import { dbToTypes } from "../../data/datatypes";
 import { buildSQLFromAST } from "./shared";
 
+// PostgreSQL 型別對應處理函數
+function mapPostgreSQLType(dataType, diagramDb, affinity) {
+  const normalizedType = dataType.toLowerCase();
+  
+  if (normalizedType === 'character varying' || normalizedType === 'varchar') {
+    return 'VARCHAR';
+  } else if (normalizedType === 'character' || normalizedType === 'char') {
+    return 'CHAR';
+  } else if (normalizedType === 'integer' || normalizedType === 'int4') {
+    return 'INTEGER';
+  } else if (normalizedType === 'bigint' || normalizedType === 'int8') {
+    return 'BIGINT';
+  } else if (normalizedType === 'smallint' || normalizedType === 'int2') {
+    return 'SMALLINT';
+  } else if (normalizedType === 'boolean' || normalizedType === 'bool') {
+    return 'BOOLEAN';
+  } else if (normalizedType === 'text') {
+    return 'TEXT';
+  } else if (normalizedType === 'numeric' || normalizedType === 'decimal') {
+    return 'NUMERIC';
+  } else if (normalizedType === 'real' || normalizedType === 'float4') {
+    return 'REAL';
+  } else if (normalizedType === 'double precision' || normalizedType === 'float8') {
+    return 'DOUBLE PRECISION';
+  } else if (normalizedType === 'timestamp' || normalizedType === 'timestamp without time zone') {
+    return 'TIMESTAMP';
+  } else if (normalizedType === 'timestamptz' || normalizedType === 'timestamp with time zone') {
+    return 'TIMESTAMPTZ';
+  } else if (normalizedType === 'date') {
+    return 'DATE';
+  } else if (normalizedType === 'time' || normalizedType === 'time without time zone') {
+    return 'TIME';
+  } else if (normalizedType === 'timetz' || normalizedType === 'time with time zone') {
+    return 'TIMETZ';
+  } else if (normalizedType === 'uuid') {
+    return 'UUID';
+  } else if (normalizedType === 'json') {
+    return 'JSON';
+  } else if (normalizedType === 'jsonb') {
+    return 'JSONB';
+  } else if (normalizedType === 'bytea') {
+    return 'BYTEA';
+  } else if (dbToTypes[diagramDb][dataType]) {
+    return dataType;
+  } else {
+    return affinity[diagramDb][dataType.toUpperCase()];
+  }
+}
+
 const affinity = {
   [DB.POSTGRES]: new Proxy(
     { INT: "INTEGER" },
@@ -53,8 +102,11 @@ export function fromPostgres(ast, diagramDb = DB.GENERIC) {
                 d.definition.dataType,
               ),
             )?.name;
-            if (!type && !dbToTypes[diagramDb][d.definition.dataType])
-              type = affinity[diagramDb][d.definition.dataType.toUpperCase()];
+            
+            // PostgreSQL 型別對應處理
+            if (!type) {
+              type = mapPostgreSQLType(d.definition.dataType, diagramDb, affinity);
+            }
             field.type = type;
 
             if (d.definition.expr && d.definition.expr.type === "expr_list") {
@@ -266,7 +318,7 @@ export function fromPostgres(ast, diagramDb = DB.GENERIC) {
 
               let type = d.definition.dataType;
               if (!dbToTypes[diagramDb][type]) {
-                type = affinity[diagramDb][type];
+                type = mapPostgreSQLType(type, diagramDb, affinity);
               }
               field.type = type;
             }
