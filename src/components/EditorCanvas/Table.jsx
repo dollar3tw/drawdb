@@ -148,18 +148,25 @@ export default function Table(props) {
         onPointerDown={onPointerDown}
       >
         <div
-          className={`border-2 hover:border-dashed hover:border-blue-500
-               select-none rounded-lg w-full ${
+          className={`select-none rounded-lg w-full transition-all duration-200 ${
                  settings.mode === "light"
                    ? "bg-zinc-100 text-zinc-800"
                    : "bg-zinc-800 text-zinc-200"
-               } ${isSelected ? "border-solid border-blue-500" : borderColor}`}
-          style={{ direction: "ltr" }}
+               } ${
+                 isSelected 
+                   ? "border-4 border-blue-500 shadow-xl" 
+                   : `border-2 ${borderColor} hover:border-dashed hover:border-blue-500`
+               }`}
+          style={{ 
+            direction: "ltr"
+          }}
           onClick={openEditor}
         >
           <div
             className="h-[10px] w-full rounded-t-md"
-            style={{ backgroundColor: tableData.color }}
+            style={{ 
+              backgroundColor: tableData.color
+            }}
           />
           <div
             className={`overflow-hidden font-bold flex flex-col justify-center border-b border-gray-400 ${
