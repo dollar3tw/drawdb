@@ -11,6 +11,12 @@ export default function EnumsContextProvider({ children }) {
   const [enums, setEnums] = useState([]);
   const { setUndoStack, setRedoStack } = useUndoRedo();
 
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
+
   const addEnum = (data, addToHistory = true) => {
     if (data) {
       setEnums((prev) => {
@@ -30,11 +36,11 @@ export default function EnumsContextProvider({ children }) {
     if (addToHistory) {
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.ADD,
           element: ObjectType.ENUM,
           message: t("add_enum"),
-        },
+        }),
       ]);
       setRedoStack([]);
     }
@@ -45,7 +51,7 @@ export default function EnumsContextProvider({ children }) {
       Toast.success(t("enum_deleted"));
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.DELETE,
           element: ObjectType.ENUM,
           id: id,
@@ -53,7 +59,7 @@ export default function EnumsContextProvider({ children }) {
           message: t("delete_enum", {
             enumName: enums[id].name,
           }),
-        },
+        }),
       ]);
       setRedoStack([]);
     }

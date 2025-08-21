@@ -13,6 +13,12 @@ export default function NotesContextProvider({ children }) {
   const { setUndoStack, setRedoStack } = useUndoRedo();
   const { selectedElement, setSelectedElement } = useSelect();
 
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
+
   const addNote = (data, addToHistory = true) => {
     if (data) {
       setNotes((prev) => {
@@ -38,11 +44,11 @@ export default function NotesContextProvider({ children }) {
     if (addToHistory) {
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.ADD,
           element: ObjectType.NOTE,
           message: t("add_note"),
-        },
+        }),
       ]);
       setRedoStack([]);
     }
@@ -53,12 +59,12 @@ export default function NotesContextProvider({ children }) {
       Toast.success(t("note_deleted"));
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.DELETE,
           element: ObjectType.NOTE,
           data: notes[id],
           message: t("delete_note", { noteTitle: notes[id].title }),
-        },
+        }),
       ]);
       setRedoStack([]);
     }

@@ -53,6 +53,12 @@ export default function Canvas() {
     bulkSelectedElements,
     setBulkSelectedElements,
   } = useSelect();
+
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
   const [dragging, setDragging] = useState({
     element: ObjectType.NONE,
     id: null,
@@ -460,7 +466,7 @@ export default function Canvas() {
       if (bulkSelectedElements.length) {
         setUndoStack((prev) => [
           ...prev,
-          {
+          createUndoItem({
             action: Action.MOVE,
             bulk: true,
             message: t("bulk_update"),
@@ -471,7 +477,7 @@ export default function Canvas() {
                 y: getElement(element).y,
               },
             })),
-          },
+          }),
         ]);
         setSelectedElement((prev) => ({
           ...prev,

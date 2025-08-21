@@ -423,6 +423,9 @@ export default function WorkSpace() {
 
     if (settings.autosave) {
       setSaveState(State.SAVING);
+    } else {
+      // 如果自動儲存關閉，標記為未儲存
+      setSaveState(State.UNSAVED);
     }
   }, [
     undoStack,

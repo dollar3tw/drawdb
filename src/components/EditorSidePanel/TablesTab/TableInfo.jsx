@@ -21,6 +21,12 @@ export default function TableInfo({ data }) {
   const [indexActiveKey, setIndexActiveKey] = useState("");
   const { deleteTable, updateTable, setTables } = useDiagram();
   const { setUndoStack, setRedoStack } = useUndoRedo();
+
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
   const { setSaveState } = useSaveState();
   const [editField, setEditField] = useState({});
 
@@ -43,7 +49,7 @@ export default function TableInfo({ data }) {
             if (e.target.value === editField.comment) return;
             setUndoStack((prev) => [
               ...prev,
-              {
+              createUndoItem({
                 action: Action.EDIT,
                 element: ObjectType.TABLE,
                 component: "self",
@@ -54,7 +60,7 @@ export default function TableInfo({ data }) {
                   tableName: data.name,
                   extra: "[comment]",
                 }),
-              },
+              }),
             ]);
             setRedoStack([]);
           }}
@@ -111,7 +117,7 @@ export default function TableInfo({ data }) {
           onChange={({ hex: color }) => {
             setUndoStack((prev) => [
               ...prev,
-              {
+              createUndoItem({
                 action: Action.EDIT,
                 element: ObjectType.TABLE,
                 component: "self",
@@ -122,7 +128,7 @@ export default function TableInfo({ data }) {
                   tableName: data.name,
                   extra: "[color]",
                 }),
-              },
+              }),
             ]);
             setRedoStack([]);
             updateTable(data.id, { color });
@@ -137,7 +143,7 @@ export default function TableInfo({ data }) {
               setIndexActiveKey("1");
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "index_add",
@@ -146,7 +152,7 @@ export default function TableInfo({ data }) {
                     tableName: data.name,
                     extra: "[add index]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
               updateTable(data.id, {
@@ -169,7 +175,7 @@ export default function TableInfo({ data }) {
               const id = nanoid();
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field_add",
@@ -179,7 +185,7 @@ export default function TableInfo({ data }) {
                     tableName: data.name,
                     extra: "[add field]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
               updateTable(data.id, {

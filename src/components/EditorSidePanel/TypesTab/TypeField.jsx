@@ -20,6 +20,12 @@ export default function TypeField({ data, tid, fid }) {
   const { enums } = useEnums();
   const { database } = useDiagram();
   const { setUndoStack, setRedoStack } = useUndoRedo();
+
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
   const [editField, setEditField] = useState({});
   const { t } = useTranslation();
 
@@ -42,7 +48,7 @@ export default function TypeField({ data, tid, fid }) {
             if (e.target.value === editField.name) return;
             setUndoStack((prev) => [
               ...prev,
-              {
+              createUndoItem({
                 action: Action.EDIT,
                 element: ObjectType.TYPE,
                 component: "field",
@@ -54,7 +60,7 @@ export default function TypeField({ data, tid, fid }) {
                   typeName: data.name,
                   extra: "[field]",
                 }),
-              },
+              }),
             ]);
             setRedoStack([]);
           }}
@@ -89,7 +95,7 @@ export default function TypeField({ data, tid, fid }) {
             if (value === data.type) return;
             setUndoStack((prev) => [
               ...prev,
-              {
+              createUndoItem({
                 action: Action.EDIT,
                 element: ObjectType.TYPE,
                 component: "field",
@@ -101,7 +107,7 @@ export default function TypeField({ data, tid, fid }) {
                   typeName: data.name,
                   extra: "[field]",
                 }),
-              },
+              }),
             ]);
             setRedoStack([]);
             if (value === "ENUM" || value === "SET") {
@@ -176,7 +182,7 @@ export default function TypeField({ data, tid, fid }) {
                         return;
                       setUndoStack((prev) => [
                         ...prev,
-                        {
+                        createUndoItem({
                           action: Action.EDIT,
                           element: ObjectType.TYPE,
                           component: "field",
@@ -188,7 +194,7 @@ export default function TypeField({ data, tid, fid }) {
                             typeName: data.name,
                             extra: "[field]",
                           }),
-                        },
+                        }),
                       ]);
                       setRedoStack([]);
                     }}
@@ -214,7 +220,7 @@ export default function TypeField({ data, tid, fid }) {
                       if (e.target.value === editField.size) return;
                       setUndoStack((prev) => [
                         ...prev,
-                        {
+                        createUndoItem({
                           action: Action.EDIT,
                           element: ObjectType.TABLE,
                           component: "field",
@@ -226,7 +232,7 @@ export default function TypeField({ data, tid, fid }) {
                             typeName: data.name,
                             extra: "[field]",
                           }),
-                        },
+                        }),
                       ]);
                       setRedoStack([]);
                     }}
@@ -257,7 +263,7 @@ export default function TypeField({ data, tid, fid }) {
                       if (e.target.value === editField.size) return;
                       setUndoStack((prev) => [
                         ...prev,
-                        {
+                        createUndoItem({
                           action: Action.EDIT,
                           element: ObjectType.TABLE,
                           component: "field",
@@ -269,7 +275,7 @@ export default function TypeField({ data, tid, fid }) {
                             typeName: data.name,
                             extra: "[field]",
                           }),
-                        },
+                        }),
                       ]);
                       setRedoStack([]);
                     }}
@@ -283,7 +289,7 @@ export default function TypeField({ data, tid, fid }) {
                 onClick={() => {
                   setUndoStack((prev) => [
                     ...prev,
-                    {
+                    createUndoItem({
                       action: Action.EDIT,
                       element: ObjectType.TYPE,
                       component: "field_delete",
@@ -291,10 +297,10 @@ export default function TypeField({ data, tid, fid }) {
                       fid: fid,
                       data: data,
                       message: t("edit_type", {
-                        typeName: data.name,
-                        extra: "[delete field]",
+                        typeName: types[tid].name,
+                        extra: `[delete field: ${data.name}]`,
                       }),
-                    },
+                    }),
                   ]);
                   updateType(tid, {
                     fields: types[tid].fields.filter((_, k) => k !== fid),

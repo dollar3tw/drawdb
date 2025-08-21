@@ -15,6 +15,12 @@ export default function TableField({ data, tid, index }) {
   const { tables, database } = useDiagram();
   const { t } = useTranslation();
   const { setUndoStack, setRedoStack } = useUndoRedo();
+
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
   const [editField, setEditField] = useState({});
   const table = useMemo(() => tables.find((t) => t.id === tid), [tables, tid]);
 
@@ -35,7 +41,7 @@ export default function TableField({ data, tid, index }) {
               if (e.target.value === editField.name) return;
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field",
@@ -47,7 +53,7 @@ export default function TableField({ data, tid, index }) {
                     tableName: table.name,
                     extra: "[field]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
             }}
@@ -78,7 +84,7 @@ export default function TableField({ data, tid, index }) {
               if (value === data.type) return;
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field",
@@ -90,7 +96,7 @@ export default function TableField({ data, tid, index }) {
                     tableName: table.name,
                     extra: "[field]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
               const incr =
@@ -150,7 +156,7 @@ export default function TableField({ data, tid, index }) {
             onClick={() => {
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field",
@@ -162,7 +168,7 @@ export default function TableField({ data, tid, index }) {
                     tableName: table.name,
                     extra: "[field]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
               updateField(tid, data.id, { notNull: !data.notNull });
@@ -179,7 +185,7 @@ export default function TableField({ data, tid, index }) {
             onClick={() => {
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field",
@@ -191,7 +197,7 @@ export default function TableField({ data, tid, index }) {
                     tableName: table.name,
                     extra: "[field]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
               updateField(tid, data.id, { primary: !data.primary });
@@ -226,7 +232,7 @@ export default function TableField({ data, tid, index }) {
               if (e.target.value === editField.comment) return;
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field",
@@ -238,7 +244,7 @@ export default function TableField({ data, tid, index }) {
                     tableName: table.name,
                     extra: "[field comment]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
             }}

@@ -39,6 +39,12 @@ export default function Table(props) {
     useSelect();
   const { setUndoStack, setRedoStack } = useUndoRedo();
 
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
+
   const borderColor = useMemo(
     () => (settings.mode === "light" ? "border-zinc-300" : "border-zinc-600"),
     [settings.mode],
@@ -104,7 +110,7 @@ export default function Table(props) {
     if (editingName !== tableData.name) {
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.EDIT,
           element: ObjectType.TABLE,
           component: "self",
@@ -115,7 +121,7 @@ export default function Table(props) {
             tableName: editingName,
             extra: "[name]",
           }),
-        },
+        }),
       ]);
       setRedoStack([]);
       updateTable(tableData.id, { name: editingName });

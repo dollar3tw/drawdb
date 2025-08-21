@@ -18,6 +18,12 @@ export default function FieldDetails({ data, tid }) {
   const { t } = useTranslation();
   const { tables, database } = useDiagram();
   const { setUndoStack, setRedoStack } = useUndoRedo();
+
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
   const { updateField, deleteField } = useDiagram();
   const [editField, setEditField] = useState({});
   const table = useMemo(() => tables.find((t) => t.id === tid), [tables, tid]);
@@ -36,7 +42,7 @@ export default function FieldDetails({ data, tid }) {
           if (e.target.value === editField.default) return;
           setUndoStack((prev) => [
             ...prev,
-            {
+            createUndoItem({
               action: Action.EDIT,
               element: ObjectType.TABLE,
               component: "field",
@@ -48,7 +54,7 @@ export default function FieldDetails({ data, tid }) {
                 tableName: table.name,
                 extra: "[field]",
               }),
-            },
+            }),
           ]);
           setRedoStack([]);
         }}
@@ -76,7 +82,7 @@ export default function FieldDetails({ data, tid }) {
                 return;
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field",
@@ -88,7 +94,7 @@ export default function FieldDetails({ data, tid }) {
                     tableName: table.name,
                     extra: "[field]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
             }}
@@ -108,7 +114,7 @@ export default function FieldDetails({ data, tid }) {
               if (e.target.value === editField.size) return;
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field",
@@ -120,7 +126,7 @@ export default function FieldDetails({ data, tid }) {
                     tableName: table.name,
                     extra: "[field]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
             }}
@@ -145,7 +151,7 @@ export default function FieldDetails({ data, tid }) {
               if (e.target.value === editField.size) return;
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field",
@@ -157,7 +163,7 @@ export default function FieldDetails({ data, tid }) {
                     tableName: table.name,
                     extra: "[field]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
             }}
@@ -178,7 +184,7 @@ export default function FieldDetails({ data, tid }) {
               if (e.target.value === editField.check) return;
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field",
@@ -190,7 +196,7 @@ export default function FieldDetails({ data, tid }) {
                     tableName: table.name,
                     extra: "[field]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
             }}
@@ -206,7 +212,7 @@ export default function FieldDetails({ data, tid }) {
           onChange={(checkedValues) => {
             setUndoStack((prev) => [
               ...prev,
-              {
+              createUndoItem({
                 action: Action.EDIT,
                 element: ObjectType.TABLE,
                 component: "field",
@@ -218,7 +224,7 @@ export default function FieldDetails({ data, tid }) {
                 redo: {
                   [checkedValues.target.value]: checkedValues.target.checked,
                 },
-              },
+              }),
             ]);
             setRedoStack([]);
             updateField(tid, data.id, {
@@ -238,7 +244,7 @@ export default function FieldDetails({ data, tid }) {
           onChange={(checkedValues) => {
             setUndoStack((prev) => [
               ...prev,
-              {
+              createUndoItem({
                 action: Action.EDIT,
                 element: ObjectType.TABLE,
                 component: "field",
@@ -254,7 +260,7 @@ export default function FieldDetails({ data, tid }) {
                   tableName: table.name,
                   extra: "[field]",
                 }),
-              },
+              }),
             ]);
             setRedoStack([]);
             updateField(tid, data.id, {
@@ -273,7 +279,7 @@ export default function FieldDetails({ data, tid }) {
             onChange={(checkedValues) => {
               setUndoStack((prev) => [
                 ...prev,
-                {
+                createUndoItem({
                   action: Action.EDIT,
                   element: ObjectType.TABLE,
                   component: "field",
@@ -289,7 +295,7 @@ export default function FieldDetails({ data, tid }) {
                     tableName: table.name,
                     extra: "[field]",
                   }),
-                },
+                }),
               ]);
               setRedoStack([]);
               updateField(tid, data.id, {
@@ -310,7 +316,7 @@ export default function FieldDetails({ data, tid }) {
               onChange={(checkedValues) => {
                 setUndoStack((prev) => [
                   ...prev,
-                  {
+                  createUndoItem({
                     action: Action.EDIT,
                     element: ObjectType.TABLE,
                     component: "field",
@@ -328,7 +334,7 @@ export default function FieldDetails({ data, tid }) {
                       tableName: table.name,
                       extra: "[field]",
                     }),
-                  },
+                  }),
                 ]);
                 setRedoStack([]);
                 updateField(tid, data.id, {

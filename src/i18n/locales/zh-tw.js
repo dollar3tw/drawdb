@@ -246,6 +246,7 @@ const zh_tw = {
     supported_types: "支援的檔案類型：",
     bulk_update: "批次更新",
     multiselect: "多重選取",
+    unsaved_changes_confirm: "您有未儲存的變更，確定要離開嗎？",
   },
 };
 

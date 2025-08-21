@@ -13,6 +13,12 @@ export default function AreasContextProvider({ children }) {
   const { selectedElement, setSelectedElement } = useSelect();
   const { setUndoStack, setRedoStack } = useUndoRedo();
 
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
+
   const addArea = (data, addToHistory = true) => {
     if (data) {
       setAreas((prev) => {
@@ -39,11 +45,11 @@ export default function AreasContextProvider({ children }) {
     if (addToHistory) {
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.ADD,
           element: ObjectType.AREA,
           message: t("add_area"),
-        },
+        }),
       ]);
       setRedoStack([]);
     }
@@ -54,12 +60,12 @@ export default function AreasContextProvider({ children }) {
       Toast.success(t("area_deleted"));
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.DELETE,
           element: ObjectType.AREA,
           data: areas[id],
           message: t("delete_area", areas[id].name),
-        },
+        }),
       ]);
       setRedoStack([]);
     }

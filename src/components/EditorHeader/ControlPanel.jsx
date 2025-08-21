@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import {
   IconCaretdown,
   IconChevronRight,
@@ -24,7 +24,6 @@ import {
   Toast,
   Popconfirm,
 } from "@douyinfe/semi-ui";
-import { toPng, toJpeg, toSvg } from "html-to-image";
 import {
   jsonToMySQL,
   jsonToPostgreSQL,
@@ -43,7 +42,6 @@ import {
   DB,
   IMPORT_FROM,
 } from "../../data/constants";
-import jsPDF from "jspdf";
 import { useHotkeys } from "react-hotkeys-hook";
 import { Validator } from "jsonschema";
 import { areaSchema, noteSchema, tableSchema } from "../../data/schemas";
@@ -107,6 +105,46 @@ export default function ControlPanel({
   });
   const [importFrom, setImportFrom] = useState(IMPORT_FROM.DBML);
   const { saveState, setSaveState } = useSaveState();
+  
+  // 處理離開前的提醒
+  const handleExitWithConfirm = (navigateTo) => {
+    // 如果有未儲存的變更（包括 UNSAVED 狀態）
+    if (saveState === State.UNSAVED || saveState === State.SAVING) {
+      const confirmExit = window.confirm(
+        t("unsaved_changes_confirm") || "您有未儲存的變更，確定要離開嗎？"
+      );
+      if (confirmExit) {
+        if (typeof navigateTo === 'function') {
+          navigateTo();
+        } else {
+          navigate(navigateTo);
+        }
+      }
+    } else {
+      if (typeof navigateTo === 'function') {
+        navigateTo();
+      } else {
+        navigate(navigateTo);
+      }
+    }
+  };
+  
+  // 處理瀏覽器關閉或刷新時的提醒
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (saveState === State.UNSAVED || saveState === State.SAVING) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome 需要設置 returnValue
+        return '您有未儲存的變更，確定要離開嗎？'; // 某些瀏覽器會顯示這個訊息
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [saveState]);
   const { layout, setLayout } = useLayout();
   const { settings, setSettings } = useSettings();
   const { recordDetailedRevision } = useRevisionHistory();
@@ -998,109 +1036,6 @@ export default function ControlPanel({
       export_as: {
         children: [
           {
-            name: "PNG",
-            function: () => {
-              const canvas = document.getElementById("canvas");
-              const diagram = document.getElementById("diagram");
-              
-              // 設定選項以確保正確捕獲 SVG 內容
-              const options = {
-                backgroundColor: "#ffffff",
-                cacheBust: true,
-                filter: (node) => {
-                  // 過濾掉調試座標顯示
-                  return !node.classList?.contains('fixed');
-                },
-                pixelRatio: 2, // 提高圖片品質
-              };
-              
-              toPng(canvas, options).then(function (dataUrl) {
-                setExportData((prev) => ({
-                  ...prev,
-                  data: dataUrl,
-                  extension: "png",
-                }));
-                setModal(MODAL.IMG);
-              }).catch(function (error) {
-                console.error('匯出 PNG 失敗:', error);
-                Toast.error(t("oops_smth_went_wrong"));
-              });
-            },
-          },
-          {
-            name: "JPEG",
-            function: () => {
-              const canvas = document.getElementById("canvas");
-              
-              // 設定選項以確保正確捕獲 SVG 內容
-              const options = {
-                quality: 0.95,
-                backgroundColor: "#ffffff",
-                cacheBust: true,
-                filter: (node) => {
-                  // 過濾掉調試座標顯示
-                  return !node.classList?.contains('fixed');
-                },
-                pixelRatio: 2, // 提高圖片品質
-              };
-              
-              toJpeg(canvas, options).then(
-                function (dataUrl) {
-                  setExportData((prev) => ({
-                    ...prev,
-                    data: dataUrl,
-                    extension: "jpeg",
-                  }));
-                  setModal(MODAL.IMG);
-                },
-              ).catch(function (error) {
-                console.error('匯出 JPEG 失敗:', error);
-                Toast.error(t("oops_smth_went_wrong"));
-              });
-            },
-          },
-          {
-            name: "SVG",
-            function: () => {
-              const filter = (node) => node.tagName !== "i";
-              toSvg(document.getElementById("canvas"), { filter: filter }).then(
-                function (dataUrl) {
-                  setExportData((prev) => ({
-                    ...prev,
-                    data: dataUrl,
-                    extension: "svg",
-                  }));
-                },
-              );
-              setModal(MODAL.IMG);
-            },
-          },
-          {
-            name: "JSON",
-            function: () => {
-              setModal(MODAL.CODE);
-              const result = JSON.stringify(
-                {
-                  tables: tables,
-                  relationships: relationships,
-                  notes: notes,
-                  subjectAreas: areas,
-                  database: database,
-                  ...(databases[database].hasTypes && { types: types }),
-                  ...(databases[database].hasEnums && { enums: enums }),
-                  title: title,
-                },
-                null,
-                2,
-              );
-              setExportData((prev) => ({
-                ...prev,
-                data: result,
-                extension: "json",
-              }));
-            },
-          },
-          {
             name: "DBML",
             function: () => {
               setModal(MODAL.CODE);
@@ -1114,43 +1049,6 @@ export default function ControlPanel({
                 data: result,
                 extension: "dbml",
               }));
-            },
-          },
-          {
-            name: "PDF",
-            function: () => {
-              const canvas = document.getElementById("canvas");
-              
-              // 設定選項以確保正確捕獲 SVG 內容
-              const options = {
-                quality: 0.95,
-                backgroundColor: "#ffffff",
-                cacheBust: true,
-                filter: (node) => {
-                  // 過濾掉調試座標顯示
-                  return !node.classList?.contains('fixed');
-                },
-                pixelRatio: 2, // 提高圖片品質
-              };
-              
-              toJpeg(canvas, options).then(function (dataUrl) {
-                const doc = new jsPDF("l", "px", [
-                  canvas.offsetWidth,
-                  canvas.offsetHeight,
-                ]);
-                doc.addImage(
-                  dataUrl,
-                  "jpeg",
-                  0,
-                  0,
-                  canvas.offsetWidth,
-                  canvas.offsetHeight,
-                );
-                doc.save(`${exportData.filename}.pdf`);
-              }).catch(function (error) {
-                console.error('匯出 PDF 失敗:', error);
-                Toast.error(t("oops_smth_went_wrong"));
-              });
             },
           },
           {
@@ -1198,8 +1096,7 @@ export default function ControlPanel({
       },
       exit: {
         function: () => {
-          save();
-          if (saveState === State.SAVED) navigate("/");
+          handleExitWithConfirm("/");
         },
       },
     },
@@ -1777,14 +1674,20 @@ export default function ControlPanel({
         style={isRtl(i18n.language) ? { direction: "rtl" } : {}}
       >
         <div className="flex justify-start items-center">
-          <Link to="/">
+          <div 
+            onClick={(e) => {
+              e.preventDefault();
+              handleExitWithConfirm("/");
+            }}
+            className="cursor-pointer"
+          >
             <img
               width={54}
               src={icon}
               alt="logo"
               className="ms-7 min-w-[54px]"
             />
-          </Link>
+          </div>
           <div className="ms-1 mt-1">
             <div className="flex items-center ms-3 gap-2">
               {databases[database].image && (

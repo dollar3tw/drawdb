@@ -69,6 +69,12 @@ export default function Modal({
   const { enums, setEnums } = useEnums();
   const { setTransform } = useTransform();
   const { setUndoStack, setRedoStack } = useUndoRedo();
+
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
   const [uncontrolledTitle, setUncontrolledTitle] = useState(title);
   const [importSource, setImportSource] = useState({
     src: "",
@@ -299,12 +305,12 @@ export default function Modal({
         
         // 只有在有變更時才加入 undo stack
         if (summary !== "沒有變更") {
-          setUndoStack((prev) => [...prev, {
+          setUndoStack((prev) => [...prev, createUndoItem({
             action: "IMPORT",
             timestamp: Date.now(),
             data: currentState,
             description: `匯入 SQL 檔案（合併）：${summary}`
-          }]);
+          })]);
           setRedoStack([]);
           
           // 記錄到修訂歷程（如果有圖表 ID）

@@ -16,6 +16,12 @@ export default function DiagramContextProvider({ children }) {
   const { setUndoStack, setRedoStack } = useUndoRedo();
   const { selectedElement, setSelectedElement } = useSelect();
 
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
+
   const addTable = (data, addToHistory = true) => {
     const id = nanoid();
     if (data) {
@@ -55,12 +61,12 @@ export default function DiagramContextProvider({ children }) {
     if (addToHistory) {
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           id: data ? data.id : id,
           action: Action.ADD,
           element: ObjectType.TABLE,
           message: t("add_table"),
-        },
+        }),
       ]);
       setRedoStack([]);
     }
@@ -78,7 +84,7 @@ export default function DiagramContextProvider({ children }) {
       const deletedTableIndex = tables.findIndex((t) => t.id === id);
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.DELETE,
           element: ObjectType.TABLE,
           data: {
@@ -87,7 +93,7 @@ export default function DiagramContextProvider({ children }) {
             index: deletedTableIndex,
           },
           message: t("delete_table", { tableName: deletedTable.name }),
-        },
+        }),
       ]);
       setRedoStack([]);
       Toast.success(t("table_deleted"));
@@ -142,7 +148,7 @@ export default function DiagramContextProvider({ children }) {
       }, []);
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.EDIT,
           element: ObjectType.TABLE,
           component: "field_delete",
@@ -154,9 +160,9 @@ export default function DiagramContextProvider({ children }) {
           },
           message: t("edit_table", {
             tableName: name,
-            extra: "[delete field]",
+            extra: `[delete field: ${field.name}]`,
           }),
-        },
+        }),
       ]);
       setRedoStack([]);
     }
@@ -202,14 +208,14 @@ export default function DiagramContextProvider({ children }) {
     if (addToHistory) {
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.DELETE,
           element: ObjectType.RELATIONSHIP,
           data: relationships[id],
           message: t("delete_relationship", {
             refName: relationships[id].name,
           }),
-        },
+        }),
       ]);
       setRedoStack([]);
     }

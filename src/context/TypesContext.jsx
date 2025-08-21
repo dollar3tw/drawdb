@@ -11,6 +11,12 @@ export default function TypesContextProvider({ children }) {
   const [types, setTypes] = useState([]);
   const { setUndoStack, setRedoStack } = useUndoRedo();
 
+  // 輔助函數：建立帶有時間戳記的 undo 項目
+  const createUndoItem = (item) => ({
+    ...item,
+    timestamp: new Date().toISOString()
+  });
+
   const addType = (data, addToHistory = true) => {
     if (data) {
       setTypes((prev) => {
@@ -31,11 +37,11 @@ export default function TypesContextProvider({ children }) {
     if (addToHistory) {
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.ADD,
           element: ObjectType.TYPE,
           message: t("add_type"),
-        },
+        }),
       ]);
       setRedoStack([]);
     }
@@ -46,7 +52,7 @@ export default function TypesContextProvider({ children }) {
       Toast.success(t("type_deleted"));
       setUndoStack((prev) => [
         ...prev,
-        {
+        createUndoItem({
           action: Action.DELETE,
           element: ObjectType.TYPE,
           id: id,
@@ -54,7 +60,7 @@ export default function TypesContextProvider({ children }) {
           message: t("delete_type", {
             typeName: types[id].name,
           }),
-        },
+        }),
       ]);
       setRedoStack([]);
     }
