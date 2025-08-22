@@ -184,6 +184,24 @@ const initDb = (callback = () => {}) => {
         return callback(err);
       }
       console.log("Table 'revision_history' created or already exists.");
+    });
+
+    // Create collaboration history table
+    db.run(`CREATE TABLE IF NOT EXISTS collaboration_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      diagram_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      action TEXT NOT NULL,
+      details TEXT,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (diagram_id) REFERENCES diagrams(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`, (err) => {
+      if (err) {
+        console.error("Error creating collaboration_history table:", err.message);
+        return callback(err);
+      }
+      console.log("Table 'collaboration_history' created or already exists.");
       callback(null); // Success
     });
   });

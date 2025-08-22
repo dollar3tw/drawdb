@@ -10,7 +10,7 @@ const defaultSettings = {
   autosave: true,
   panning: true,
   showCardinality: true,
-  showRelationshipLabels: true,
+  showRelationshipLabels: false,
   tableWidth: tableWidth,
   showDebugCoordinates: false,
 };

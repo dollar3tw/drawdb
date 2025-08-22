@@ -4,8 +4,8 @@ import { tableFieldHeight, tableHeaderHeight } from "../data/constants";
  * Generates an SVG path string to visually represent a relationship between two fields.
  *
  * @param {{
- *   startTable: { x: number, y: number },
- *   endTable: { x: number, y: number },
+ *   startTable: { x: number, y: number, hasComment?: boolean },
+ *   endTable: { x: number, y: number, hasComment?: boolean },
  *   startFieldIndex: number,
  *   endFieldIndex: number
  * }} r - Relationship data.
@@ -20,17 +20,22 @@ export function calcPath(r, tableWidth = 200, zoom = 1) {
 
   const width = tableWidth * zoom;
   let x1 = r.startTable.x;
+  // 計算Y座標時，考慮表格是否有註解（有註解時標題高度增加20px）
+  // 並將連接點定位在欄位的第一行文字中心（從欄位頂部往下12px）
+  const startTableHeaderHeight = tableHeaderHeight + (r.startTable.hasComment ? 20 : 0);
   let y1 =
     r.startTable.y +
     r.startFieldIndex * tableFieldHeight +
-    tableHeaderHeight +
-    tableFieldHeight / 2;
+    startTableHeaderHeight +
+    12; // 改為12px，對齊到欄位名稱行的中心
+  
   let x2 = r.endTable.x;
+  const endTableHeaderHeight = tableHeaderHeight + (r.endTable.hasComment ? 20 : 0);
   let y2 =
     r.endTable.y +
     r.endFieldIndex * tableFieldHeight +
-    tableHeaderHeight +
-    tableFieldHeight / 2;
+    endTableHeaderHeight +
+    12; // 改為12px，對齊到欄位名稱行的中心
 
   let radius = 10 * zoom;
   const midX = (x2 + x1 + width) / 2;

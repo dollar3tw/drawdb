@@ -6,7 +6,7 @@ import {
   Tab,
 } from "../../data/constants";
 import { calcPath } from "../../utils/calcPath";
-import { useDiagram, useSettings, useLayout, useSelect } from "../../hooks";
+import { useDiagram, useSettings, useLayout, useSelect, useUndoRedo } from "../../hooks";
 import { useTranslation } from "react-i18next";
 import { SideSheet } from "@douyinfe/semi-ui";
 import RelationshipInfo from "../EditorSidePanel/RelationshipsTab/RelationshipInfo";
@@ -15,9 +15,10 @@ const labelFontSize = 16;
 
 export default function Relationship({ data }) {
   const { settings } = useSettings();
-  const { tables } = useDiagram();
+  const { tables, updateRelationship } = useDiagram();
   const { layout } = useLayout();
   const { selectedElement, setSelectedElement } = useSelect();
+  const { setUndoStack, setRedoStack } = useUndoRedo();
   const { t } = useTranslation();
 
   const pathValues = useMemo(() => {
@@ -31,8 +32,16 @@ export default function Relationship({ data }) {
         (f) => f.id === data.startFieldId,
       ),
       endFieldIndex: endTable.fields.findIndex((f) => f.id === data.endFieldId),
-      startTable: { x: startTable.x, y: startTable.y },
-      endTable: { x: endTable.x, y: endTable.y },
+      startTable: { 
+        x: startTable.x, 
+        y: startTable.y,
+        hasComment: startTable.comment && startTable.comment.trim() !== ""
+      },
+      endTable: { 
+        x: endTable.x, 
+        y: endTable.y,
+        hasComment: endTable.comment && endTable.comment.trim() !== ""
+      },
     };
   }, [tables, data]);
 
@@ -117,6 +126,24 @@ export default function Relationship({ data }) {
     }
   };
 
+  const toggleCardinality = () => {
+    let newCardinality;
+    switch (data.cardinality) {
+      case Cardinality.ONE_TO_ONE:
+        newCardinality = Cardinality.ONE_TO_MANY;
+        break;
+      case Cardinality.ONE_TO_MANY:
+        newCardinality = Cardinality.MANY_TO_ONE;
+        break;
+      case Cardinality.MANY_TO_ONE:
+        newCardinality = Cardinality.ONE_TO_ONE;
+        break;
+      default:
+        newCardinality = Cardinality.ONE_TO_ONE;
+    }
+    updateRelationship(data.id, { cardinality: newCardinality });
+  };
+
   return (
     <>
       <g className="select-none group" onDoubleClick={edit}>
@@ -153,40 +180,46 @@ export default function Relationship({ data }) {
         )}
         {pathRef.current && settings.showCardinality && (
           <>
-            <circle
-              cx={cardinalityStartX}
-              cy={cardinalityStartY}
-              r="12"
-              fill="grey"
-              className="group-hover:fill-sky-700"
-            />
-            <text
-              x={cardinalityStartX}
-              y={cardinalityStartY}
-              fill="white"
-              strokeWidth="0.5"
-              textAnchor="middle"
-              alignmentBaseline="middle"
-            >
-              {cardinalityStart}
-            </text>
-            <circle
-              cx={cardinalityEndX}
-              cy={cardinalityEndY}
-              r="12"
-              fill="grey"
-              className="group-hover:fill-sky-700"
-            />
-            <text
-              x={cardinalityEndX}
-              y={cardinalityEndY}
-              fill="white"
-              strokeWidth="0.5"
-              textAnchor="middle"
-              alignmentBaseline="middle"
-            >
-              {cardinalityEnd}
-            </text>
+            <g onClick={toggleCardinality} style={{ cursor: "pointer" }}>
+              <circle
+                cx={cardinalityStartX}
+                cy={cardinalityStartY}
+                r="12"
+                fill="grey"
+                className="group-hover:fill-sky-700"
+              />
+              <text
+                x={cardinalityStartX}
+                y={cardinalityStartY}
+                fill="white"
+                strokeWidth="0.5"
+                textAnchor="middle"
+                alignmentBaseline="middle"
+                style={{ pointerEvents: "none" }}
+              >
+                {cardinalityStart}
+              </text>
+            </g>
+            <g onClick={toggleCardinality} style={{ cursor: "pointer" }}>
+              <circle
+                cx={cardinalityEndX}
+                cy={cardinalityEndY}
+                r="12"
+                fill="grey"
+                className="group-hover:fill-sky-700"
+              />
+              <text
+                x={cardinalityEndX}
+                y={cardinalityEndY}
+                fill="white"
+                strokeWidth="0.5"
+                textAnchor="middle"
+                alignmentBaseline="middle"
+                style={{ pointerEvents: "none" }}
+              >
+                {cardinalityEnd}
+              </text>
+            </g>
           </>
         )}
       </g>
