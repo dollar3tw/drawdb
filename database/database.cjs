@@ -186,12 +186,15 @@ const initDb = (callback = () => {}) => {
       console.log("Table 'revision_history' created or already exists.");
     });
 
-    // Create collaboration history table
+    // Create collaboration history table if not exists
     db.run(`CREATE TABLE IF NOT EXISTS collaboration_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       diagram_id INTEGER NOT NULL,
       user_id INTEGER NOT NULL,
       action TEXT NOT NULL,
+      target_type TEXT,
+      target_id TEXT,
+      changes TEXT,
       details TEXT,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (diagram_id) REFERENCES diagrams(id) ON DELETE CASCADE,
@@ -202,7 +205,7 @@ const initDb = (callback = () => {}) => {
         return callback(err);
       }
       console.log("Table 'collaboration_history' created or already exists.");
-      callback(null); // Success
+      callback(null);
     });
   });
 };

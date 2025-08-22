@@ -77,7 +77,6 @@ export default function Modal({
   const [uncontrolledTitle, setUncontrolledTitle] = useState(title);
   const [importSource, setImportSource] = useState({
     src: "",
-    overwrite: false,
   });
   const [importData, setImportData] = useState(null);
   const [error, setError] = useState({
@@ -174,154 +173,85 @@ export default function Modal({
   // 處理匯入的資料（共用函數）
   const processImportedData = async (diagramData) => {
     try {
-      if (importSource.overwrite) {
-        // 完全覆寫
-        console.log('覆寫模式 - 匯入的圖表資料:', diagramData);
-        console.log('表格數:', diagramData.tables.length);
-        console.log('關聯數:', diagramData.relationships.length);
-        console.log('前5個表格:', diagramData.tables.slice(0, 5).map(t => ({
-          name: t.name, 
-          id: t.id, 
-          x: t.x, 
-          y: t.y, 
-          fieldCount: t.fields.length
-        })));
-        
-        // 保存當前狀態到 undo stack
-        const currentState = {
-          tables: tables,
-          relationships: relationships,
-          notes: notes,
-          areas: areas,
-          types: types,
-          enums: enums,
-        };
-        
-        // 如果有檔案名稱，使用它作為圖表標題
-        if (importSource.fileName) {
-          setTitle(importSource.fileName);
-        }
-        
-        setTables(diagramData.tables);
-        setRelationships(diagramData.relationships);
-        setTransform((prev) => ({ ...prev, pan: { x: 0, y: 0 } }));
-        setNotes([]);
-        setAreas([]);
-        if (databases[database].hasTypes) setTypes(diagramData.types ?? []);
-        if (databases[database].hasEnums) setEnums(diagramData.enums ?? []);
-        
-        // 將匯入操作加入 undo stack
-        setUndoStack([{
+      // 始終使用智能合併
+      const currentTables = tables || [];
+      const currentRelationships = relationships || [];
+      
+      // 保存當前狀態到 undo stack
+      const currentState = {
+        tables: currentTables,
+        relationships: currentRelationships,
+        notes: notes,
+        areas: areas,
+        types: types,
+        enums: enums,
+      };
+      
+      // 如果有檔案名稱且目前是 "Untitled diagram"，使用檔案名稱作為標題
+      if (importSource.fileName && title === "Untitled diagram") {
+        setTitle(importSource.fileName);
+      }
+      
+      const existingData = {
+        tables: currentTables,
+        relationships: currentRelationships,
+        types: [],
+        enums: [],
+        areas: [],
+        notes: [],
+      };
+      
+      const mergeResult = smartMerge(existingData, diagramData);
+      
+      // 顯示變更摘要
+      const summary = generateChangeSummary(mergeResult.changes);
+      if (summary !== "沒有變更") {
+        Toast.success(`匯入完成：${summary}`);
+      } else {
+        Toast.info("沒有新的變更需要匯入");
+      }
+      
+      // 應用合併結果
+      console.log('智能合併結果:', mergeResult.data);
+      console.log('將設定表格數:', mergeResult.data.tables.length);
+      console.log('前5個表格:', mergeResult.data.tables.slice(0, 5).map(t => ({
+        name: t.name, 
+        id: t.id, 
+        x: t.x, 
+        y: t.y, 
+        fieldCount: t.fields.length
+      })));
+      
+      setTables(mergeResult.data.tables);
+      setRelationships(mergeResult.data.relationships);
+      if (databases[database].hasTypes) setTypes(mergeResult.data.types);
+      if (databases[database].hasEnums) setEnums(mergeResult.data.enums);
+      
+      // 只有在有變更時才加入 undo stack
+      if (summary !== "沒有變更") {
+        setUndoStack((prev) => [...prev, createUndoItem({
           action: "IMPORT",
           timestamp: Date.now(),
           data: currentState,
-          description: "匯入 SQL 檔案（覆寫）"
-        }]);
+          description: `匯入 SQL 檔案（合併）：${summary}`
+        })]);
         setRedoStack([]);
         
         // 記錄到修訂歷程（如果有圖表 ID）
         if (diagramId && recordDetailedRevision) {
-          const importDetails = {
-            tables: diagramData.tables.map(t => t.name),
-            relationships: diagramData.relationships.length,
-            types: diagramData.types?.length || 0,
-            enums: diagramData.enums?.length || 0,
-          };
           await recordDetailedRevision(
-            diagramId, 
-            currentState, 
+            diagramId,
+            currentState,
             {
-              tables: diagramData.tables,
-              relationships: diagramData.relationships,
-              notes: [],
-              areas: [],
-              types: diagramData.types || [],
-              enums: diagramData.enums || [],
+              tables: mergeResult.data.tables,
+              relationships: mergeResult.data.relationships,
+              notes: notes,
+              areas: areas,
+              types: mergeResult.data.types || [],
+              enums: mergeResult.data.enums || [],
             },
-            `IMPORT_SQL_OVERWRITE: 匯入 ${diagramData.tables.length} 個表格, ${diagramData.relationships.length} 個關聯`
+            `IMPORT_SQL_MERGE: ${summary}`
           );
-        }
-      } else {
-        // 使用智能合併
-        const currentTables = tables || [];
-        const currentRelationships = relationships || [];
-        
-        // 保存當前狀態到 undo stack
-        const currentState = {
-          tables: currentTables,
-          relationships: currentRelationships,
-          notes: notes,
-          areas: areas,
-          types: types,
-          enums: enums,
-        };
-        
-        // 如果有檔案名稱且目前是 "Untitled diagram"，使用檔案名稱作為標題
-        if (importSource.fileName && title === "Untitled diagram") {
-          setTitle(importSource.fileName);
-        }
-        
-        const existingData = {
-          tables: currentTables,
-          relationships: currentRelationships,
-          types: [],
-          enums: [],
-          areas: [],
-          notes: [],
-        };
-        
-        const mergeResult = smartMerge(existingData, diagramData);
-        
-        // 顯示變更摘要
-        const summary = generateChangeSummary(mergeResult.changes);
-        if (summary !== "沒有變更") {
-          Toast.success(`匯入完成：${summary}`);
-        } else {
-          Toast.info("沒有新的變更需要匯入");
-        }
-        
-        // 應用合併結果
-        console.log('智能合併結果:', mergeResult.data);
-        console.log('將設定表格數:', mergeResult.data.tables.length);
-        console.log('前5個表格:', mergeResult.data.tables.slice(0, 5).map(t => ({
-          name: t.name, 
-          id: t.id, 
-          x: t.x, 
-          y: t.y, 
-          fieldCount: t.fields.length
-        })));
-        
-        setTables(mergeResult.data.tables);
-        setRelationships(mergeResult.data.relationships);
-        if (databases[database].hasTypes) setTypes(mergeResult.data.types);
-        if (databases[database].hasEnums) setEnums(mergeResult.data.enums);
-        
-        // 只有在有變更時才加入 undo stack
-        if (summary !== "沒有變更") {
-          setUndoStack((prev) => [...prev, createUndoItem({
-            action: "IMPORT",
-            timestamp: Date.now(),
-            data: currentState,
-            description: `匯入 SQL 檔案（合併）：${summary}`
-          })]);
-          setRedoStack([]);
-          
-          // 記錄到修訂歷程（如果有圖表 ID）
-          if (diagramId && recordDetailedRevision) {
-            await recordDetailedRevision(
-              diagramId,
-              currentState,
-              {
-                tables: mergeResult.data.tables,
-                relationships: mergeResult.data.relationships,
-                notes: notes,
-                areas: areas,
-                types: mergeResult.data.types || [],
-                enums: mergeResult.data.enums || [],
-              },
-              `IMPORT_SQL_MERGE: ${summary}`
-            );
-          }
         }
       }
 
@@ -541,7 +471,6 @@ export default function Modal({
         setImportData(null);
         setImportSource({
           src: "",
-          overwrite: false,
         });
       }}
       onCancel={() => {
