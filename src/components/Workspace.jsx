@@ -4,7 +4,6 @@ import Canvas from "./EditorCanvas/Canvas";
 import { CanvasContextProvider } from "../context/CanvasContext";
 import SidePanel from "./EditorSidePanel/SidePanel";
 import { DB, State } from "../data/constants";
-// import { db } from "../data/db"; // Dexie db removed
 import {
   createDiagramAPI,
   getDiagramByIdAPI,

@@ -45,12 +45,9 @@ import {
 import { useHotkeys } from "react-hotkeys-hook";
 import { Validator } from "jsonschema";
 import { areaSchema, noteSchema, tableSchema } from "../../data/schemas";
-// import { db } from "../../data/db"; // Dexie db removed, API functions imported directly below
 import {
-  // Make sure to include other db functions if they are used elsewhere, or adjust this import
   deleteDiagramAPI,
-  createTemplateAPI, 
-  // ... other API functions that might be used by ControlPanel ...
+  createTemplateAPI,
 } from "../../data/db";
 import {
   useLayout,
@@ -171,7 +168,6 @@ export default function ControlPanel({
   const { selectedElement, setSelectedElement } = useSelect();
   const { transform, setTransform } = useTransform();
   const { t, i18n } = useTranslation();
-  // const { setGistId } = useContext(IdContext); // Gist IdContext removed
   const navigate = useNavigate();
   const { isRoot } = useAuth();
 

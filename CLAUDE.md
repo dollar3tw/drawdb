@@ -95,9 +95,10 @@ server.cjs        # 整合式服務主檔案
 - 主入口在 `index.js`，根據資料庫類型分發
 
 ### 匯入/匯出系統
-- SQL 匯入：`/src/utils/importSQL/` - 使用 node-sql-parser 解析
+- SQL 匯入：`/src/utils/importSQL/` - 使用簡單提取器處理 PostgreSQL/pgAdmin 格式
 - DBML 支援：使用 @dbml/core 套件
 - 匯出格式：SQL、DBML、Mermaid、文檔
+- 智慧合併：支援增量匯入，保留使用者編輯
 
 ### 認證流程
 1. 一般登入：JWT token 儲存在 localStorage
@@ -134,6 +135,42 @@ PORT=3002 npm start        # 使用其他端口
 
 ### 資料庫重置
 ```bash
-rm -f database/drawdb.sqlite*  # 刪除資料庫（會清除所有資料）
-npm start                       # 重新啟動會自動初始化
+rm -f drawdb.sqlite*  # 刪除資料庫（會清除所有資料）
+npm start             # 重新啟動會自動初始化
 ```
+
+### 預設管理員帳號
+- 使用者名稱：`admin`
+- 預設密碼：`admin`
+- **重要**：首次登入必須修改密碼
+
+## 重要系統檔案說明
+
+### 資料庫相關（必須保留）
+- **sqlite3** - 主要資料庫引擎，專案核心依賴
+- **drawdb.sqlite** - 主資料庫檔案
+- **drawdb.sqlite-shm** - SQLite 共享記憶體檔案（運行時產生）
+- **drawdb.sqlite-wal** - SQLite Write-Ahead Log（運行時產生）
+- **database/migrate.cjs** - 資料庫遷移管理系統
+- **database/migrations/** - 遷移腳本目錄，記錄資料庫架構變更歷史
+
+## 已移除的功能和檔案
+
+### 移除的UI功能（2024-08）
+- **檢視/側邊欄** - 側邊欄切換功能
+- **檢視/嚴謹模式** - 圖表錯誤檢查模式（快捷鍵 Ctrl+Shift+M）
+- **檢視/欄位詳細資料** - 欄位詳細資訊顯示（快捷鍵 Ctrl+Shift+F）
+- **檢視/顯示資料型別** - 資料型別顯示切換
+
+### 移除的依賴套件
+- **dexie** - 本地 IndexedDB（改用後端 API）
+- **dexie-react-hooks** - Dexie 的 React Hooks
+
+### 已清理的檔案（2024-08-22）
+- 測試用 SQL 檔案（babycare.sql - 134個表格的測試資料）
+- 一次性遷移腳本（migrate-root-to-admin.cjs, migrate-root-to-admin-v2.cjs）
+- 密碼重設腳本（reset-admin-password.cjs）
+- 重複的文件（START.md）
+- 臨時檔案（temp_export_section.txt）
+- 舊版資料庫檔案（database/database.db）
+- Dexie 相關註解程式碼
