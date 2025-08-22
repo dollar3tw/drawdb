@@ -597,15 +597,6 @@ export default function ControlPanel({
     setTransform((prev) => ({ ...prev, zoom: prev.zoom * 1.2 }));
   const zoomOut = () =>
     setTransform((prev) => ({ ...prev, zoom: prev.zoom / 1.2 }));
-  const viewStrictMode = () => {
-    setSettings((prev) => ({ ...prev, strictMode: !prev.strictMode }));
-  };
-  const viewFieldSummary = () => {
-    setSettings((prev) => ({
-      ...prev,
-      showFieldSummary: !prev.showFieldSummary,
-    }));
-  };
   const resetView = () =>
     setTransform((prev) => ({ ...prev, zoom: 1, pan: { x: 0, y: 0 } }));
   const fitWindow = () => {
@@ -1175,15 +1166,6 @@ export default function ControlPanel({
         function: () =>
           setLayout((prev) => ({ ...prev, header: !prev.header })),
       },
-      sidebar: {
-        state: layout.sidebar ? (
-          <i className="bi bi-toggle-on" />
-        ) : (
-          <i className="bi bi-toggle-off" />
-        ),
-        function: () =>
-          setLayout((prev) => ({ ...prev, sidebar: !prev.sidebar })),
-      },
       issues: {
         state: layout.issues ? (
           <i className="bi bi-toggle-on" />
@@ -1202,15 +1184,6 @@ export default function ControlPanel({
         function: toggleDBMLEditor,
         shortcut: "Alt+E",
       },
-      strict_mode: {
-        state: settings.strictMode ? (
-          <i className="bi bi-toggle-off" />
-        ) : (
-          <i className="bi bi-toggle-on" />
-        ),
-        function: viewStrictMode,
-        shortcut: "Ctrl+Shift+M",
-      },
       presentation_mode: {
         function: () => {
           setLayout((prev) => ({
@@ -1222,30 +1195,9 @@ export default function ControlPanel({
           enterFullscreen();
         },
       },
-      field_details: {
-        state: settings.showFieldSummary ? (
-          <i className="bi bi-toggle-on" />
-        ) : (
-          <i className="bi bi-toggle-off" />
-        ),
-        function: viewFieldSummary,
-        shortcut: "Ctrl+Shift+F",
-      },
       reset_view: {
         function: resetView,
         shortcut: "Ctrl+R",
-      },
-      show_datatype: {
-        state: settings.showDataTypes ? (
-          <i className="bi bi-toggle-on" />
-        ) : (
-          <i className="bi bi-toggle-off" />
-        ),
-        function: () =>
-          setSettings((prev) => ({
-            ...prev,
-            showDataTypes: !prev.showDataTypes,
-          })),
       },
       show_grid: {
         state: settings.showGrid ? (
@@ -1396,12 +1348,6 @@ export default function ControlPanel({
   useHotkeys("mod+shift+g", viewGrid, { preventDefault: true });
   useHotkeys("mod+up", zoomIn, { preventDefault: true });
   useHotkeys("mod+down", zoomOut, { preventDefault: true });
-  useHotkeys("mod+shift+m", viewStrictMode, {
-    preventDefault: true,
-  });
-  useHotkeys("mod+shift+f", viewFieldSummary, {
-    preventDefault: true,
-  });
   useHotkeys("mod+shift+s", saveDiagramAs, {
     preventDefault: true,
   });
