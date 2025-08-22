@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { getSessionByToken } = require('../database/database.cjs');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'drawdb-mit-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // 驗證用戶是否已登入
 const authenticateToken = async (req, res, next) => {

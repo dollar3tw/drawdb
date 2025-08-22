@@ -29,7 +29,7 @@ npm start        # 啟動服務（預設 port 3001）
 
 ### 初始登入資訊
 - **使用者名稱**: `admin`
-- **密碼**: `admin`
+- **密碼**: 在 `.env` 中設定的 `ADMIN_DEFAULT_PASSWORD`
 
 ### ⚠️ 重要：首次登入必須修改密碼
 1. 使用預設帳密登入
@@ -86,12 +86,23 @@ node database/migrate.cjs rollback
 
 ## 🔧 環境變數設定
 
-創建 `.env` 檔案（選擇性）：
+創建 `.env` 檔案（**必要**）：
+```bash
+# 從範本複製
+cp .env.example .env
+
+# 編輯並修改為您的設定
+nano .env
+```
+
+重要環境變數：
 ```env
 PORT=3001                              # 服務端口
-NODE_ENV=production                    # 環境模式
-JWT_SECRET=drawdb-mit-secret-key-2024  # JWT 密鑰
-SESSION_SECRET=your-session-secret     # Session 密鑰
+# NODE_ENV 不要在 .env 設定，會在啟動指令中自動設定
+JWT_SECRET=...                         # JWT 密鑰（必須設定）
+SESSION_SECRET=...                     # Session 密鑰（必須設定）
+ADMIN_DEFAULT_PASSWORD=...             # 預設管理員密碼（必須設定）
+# SSO 相關設定請參考 .env.example
 ```
 
 ## 📊 SQLite 檔案說明

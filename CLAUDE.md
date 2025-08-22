@@ -28,9 +28,16 @@ npm run lint         # 執行 ESLint 檢查
 ### 環境變數
 ```bash
 PORT=3001                              # 服務端口
-NODE_ENV=production                    # 環境模式
-JWT_SECRET=drawdb-mit-secret-key-2024  # JWT 簽名密鑰（重要：必須與 auth.cjs 中一致）
+# NODE_ENV 會在啟動指令中自動設定（npm start = production, npm dev = development）
+JWT_SECRET=mitdb-default-jwt-secret-2024  # JWT 簽名密鑰（重要：必須與 auth.cjs 中一致）
 SESSION_SECRET=your-session-secret     # Session 加密密鑰
+SSO_ISSUER=https://sso.mi-tech.com.tw  # SSO 伺服器地址
+SSO_CLIENT_ID=...                      # SSO 客戶端 ID
+SSO_CLIENT_SECRET=...                  # SSO 客戶端密鑰
+SSO_REDIRECT_URI=...                   # SSO 回調 URL
+STATE_SECRET=...                       # SSO 狀態加密密鑰
+SSO_SCOPE=openid profile email         # SSO 權限範圍
+ADMIN_DEFAULT_PASSWORD=admin           # 預設管理員密碼（首次登入後必須修改）
 ```
 
 ## 架構概覽
@@ -105,7 +112,7 @@ server.cjs        # 整合式服務主檔案
 2. SSO 登入：
    - OIDC 授權碼流程
    - 自動創建本地用戶
-   - JWT secret 必須統一（drawdb-mit-secret-key-2024）
+   - JWT secret 必須統一（mitdb-default-jwt-secret-2024）
 
 ### 前端路由結構
 - `/` - 首頁（未登入顯示 Landing Page）

@@ -95,7 +95,12 @@ export default function LandingPage() {
       setError(null);
     } catch (err) {
       console.error("Error fetching diagrams:", err);
-      setError("Failed to load diagrams. Please try again later.");
+      // 如果是 403 錯誤，可能是 token 過期或無效，不顯示錯誤
+      if (err.response?.status === 403 || err.response?.status === 401) {
+        setError(null);
+      } else {
+        setError("無法載入圖表，請稍後再試。");
+      }
       setPersonalDiagrams([]);
       setCollaborativeDiagrams([]);
     } finally {

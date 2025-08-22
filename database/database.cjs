@@ -104,24 +104,24 @@ const initDb = (callback = () => {}) => {
       }
       console.log("Table 'users' created or already exists.");
       
-      // Create default root user if not exists
+      // Create default admin user if not exists
       db.get("SELECT id FROM users WHERE role = 'admin'", (err, row) => {
         if (err) {
-          console.error("Error checking for root user:", err.message);
+          console.error("Error checking for admin user:", err.message);
         } else if (!row) {
-          // Create default root user
+          // Create default admin user
           const bcrypt = require('bcrypt');
-          const defaultPassword = 'mitadmin123'; // 預設密碼，建議首次登入後更改
+          const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD; // 從環境變數讀取預設密碼
           bcrypt.hash(defaultPassword, 10, (err, hashedPassword) => {
             if (err) {
               console.error("Error hashing default password:", err.message);
             } else {
               db.run(`INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)`,
-                ['root', 'root@drawdb.local', hashedPassword, 'root'], (err) => {
+                ['admin', 'admin@mitdb.local', hashedPassword, 'admin'], (err) => {
                   if (err) {
-                    console.error("Error creating default root user:", err.message);
+                    console.error("Error creating default admin user:", err.message);
                   } else {
-                    console.log("Default root user created successfully.");
+                    console.log("Default admin user created successfully.");
                   }
                 });
             }
@@ -144,6 +144,26 @@ const initDb = (callback = () => {}) => {
         return callback(err);
       }
       console.log("Table 'user_sessions' created or already exists.");
+    });
+
+    // Create diagram permissions table
+    db.run(`CREATE TABLE IF NOT EXISTS diagram_permissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      diagram_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      permission_type TEXT NOT NULL CHECK (permission_type IN ('owner', 'editor', 'viewer')),
+      granted_by INTEGER NOT NULL,
+      granted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (diagram_id) REFERENCES diagrams(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (granted_by) REFERENCES users(id),
+      UNIQUE(diagram_id, user_id)
+    )`, (err) => {
+      if (err) {
+        console.error("Error creating diagram_permissions table:", err.message);
+        return callback(err);
+      }
+      console.log("Table 'diagram_permissions' created or already exists.");
     });
 
     // Create revision history table

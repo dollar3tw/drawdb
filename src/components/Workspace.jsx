@@ -111,12 +111,15 @@ export default function WorkSpace() {
           try {
             // 檢查名稱重複
             const existingDiagrams = await getAllDiagramsAPI();
-            let finalTitle = title;
+            
+            // 移除現有的編號後綴 (例如 "Untitled diagram (1)" -> "Untitled diagram")
+            let baseTitle = title.replace(/\s*\(\d+\)\s*$/, '').trim();
+            let finalTitle = baseTitle;
             let counter = 1;
             
             // 檢查是否有重複的名稱
             while (existingDiagrams.some(d => d.name === finalTitle)) {
-              finalTitle = `${title} (${counter})`;
+              finalTitle = `${baseTitle} (${counter})`;
               counter++;
             }
             
@@ -427,14 +430,14 @@ export default function WorkSpace() {
       setSaveState(State.UNSAVED);
     }
   }, [
-    undoStack,
-    redoStack,
+    // 移除 undoStack 和 redoStack，它們不應該觸發自動儲存
+    // 只有實際內容改變時才觸發
     settings.autosave,
-    tables?.length,
-    areas?.length,
-    notes?.length,
-    types?.length,
-    relationships?.length,
+    tables,  // 改為監聽整個陣列，而不只是長度
+    areas,
+    notes,
+    types,
+    relationships,
     title,
     setSaveState,
     database, 

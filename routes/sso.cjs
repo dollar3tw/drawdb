@@ -19,20 +19,20 @@ const crypto = require('crypto');
 const db = require('../database/database.cjs');
 
 // 用於加密狀態的密鑰
-const STATE_SECRET = process.env.STATE_SECRET || 'state-encryption-secret-key';
+const STATE_SECRET = process.env.STATE_SECRET;
 
 // 如果使用自簽名證書，忽略 SSL 驗證（僅開發環境）
 if (process.env.NODE_ENV !== 'production') {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 }
 
-// SSO 配置
+// SSO 配置（從環境變數讀取）
 const SSO_CONFIG = {
-  issuer: 'https://sso.mi-tech.com.tw',
-  client_id: '36f8f572185af7c037e2045afd100f27',
-  client_secret: 'SaiBDPWnoPHueoy7QcrHkgHwtfUXmLPX',
-  redirect_uri: 'http://dd2.mi-tech.com.tw/sso/callback',  // 目前只支援 http
-  scope: 'openid profile email'
+  issuer: process.env.SSO_ISSUER,
+  client_id: process.env.SSO_CLIENT_ID,
+  client_secret: process.env.SSO_CLIENT_SECRET,
+  redirect_uri: process.env.SSO_REDIRECT_URI,
+  scope: process.env.SSO_SCOPE
 };
 
 console.log('SSO Configuration loaded:', {
@@ -380,7 +380,7 @@ router.get('/callback', async (req, res) => {
           email: email,
           role: fullUser.role || 'user'
         },
-        process.env.JWT_SECRET || 'drawdb-mit-secret-key-2024',
+        process.env.JWT_SECRET,
         { expiresIn: '7d' }
       );
       

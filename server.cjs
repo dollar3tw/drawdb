@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -34,7 +35,7 @@ function startApp() {
   
   // Session middleware for SSO
   app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-session-secret-key',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true, // 改為 true 以確保 session 被創建
     cookie: {

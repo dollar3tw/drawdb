@@ -114,7 +114,7 @@ optionalAuth
 
 ### JWT Token 機制
 
-- **Secret Key：** `drawdb-mit-secret-key-2024`
+- **Secret Key：** `mitdb-default-jwt-secret-2024`
 - **有效期：** 7 天
 - **Token 內容：**
   ```json

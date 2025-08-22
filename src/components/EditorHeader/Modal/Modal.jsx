@@ -197,6 +197,11 @@ export default function Modal({
           enums: enums,
         };
         
+        // 如果有檔案名稱，使用它作為圖表標題
+        if (importSource.fileName) {
+          setTitle(importSource.fileName);
+        }
+        
         setTables(diagramData.tables);
         setRelationships(diagramData.relationships);
         setTransform((prev) => ({ ...prev, pan: { x: 0, y: 0 } }));
@@ -250,6 +255,11 @@ export default function Modal({
           types: types,
           enums: enums,
         };
+        
+        // 如果有檔案名稱且目前是 "Untitled diagram"，使用檔案名稱作為標題
+        if (importSource.fileName && title === "Untitled diagram") {
+          setTitle(importSource.fileName);
+        }
         
         const existingData = {
           tables: currentTables,
