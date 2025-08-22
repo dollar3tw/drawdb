@@ -117,6 +117,9 @@ export function preprocessSQL(sqlContent) {
   // 特殊處理：移除 DEFAULT 中的某些函數呼叫
   cleanedSQL = cleanedSQL.replace(/DEFAULT\s+nextval\([^)]+\)/gi, '');
   
+  // 移除 PostgreSQL 的類型轉換語法 (::type)
+  cleanedSQL = cleanedSQL.replace(/::[a-zA-Z_][a-zA-Z0-9_]*(\s+varying)?(\[\])?/gi, '');
+  
   // 移除 PostgreSQL 特定的 ALTER COLUMN ... SET AUTO_INCREMENT 語句
   cleanedSQL = cleanedSQL.replace(/ALTER\s+TABLE\s+[^;]*ALTER\s+COLUMN\s+[^;]*SET\s+AUTO_INCREMENT\s*;/gmi, '');
   
@@ -143,7 +146,32 @@ export function preprocessSQL(sqlContent) {
         /^ALTER\s+TABLE/i.test(trimmed) && !/OWNER\s+TO/i.test(trimmed)
       );
     })
-    .map(statement => statement.trim() + ';')
+    .map(statement => {
+      let stmt = statement.trim();
+      // 處理保留字作為表名的情況（如 hangfire.set）
+      // PostgreSQL 保留字列表（擴展）
+      const reservedWords = 'set|order|group|select|insert|update|delete|from|where|join|left|right|inner|outer|on|as|table|column|index|key|primary|foreign|references|constraint|unique|not|null|default|check|view|trigger|function|procedure|begin|end|if|then|else|case|when|between|in|like|is|and|or|having|order|by|asc|desc|limit|offset|union|all|distinct|count|sum|avg|max|min|lock|schema|state|user|password|role|grant|revoke|execute|create|alter|drop|database|sequence|type|domain|cast|operator|aggregate|language|conversion|extension|server|wrapper|mapping|publication|subscription|policy|rule|event|statistics|collation|family|access|method|tablespace|configuration|dictionary|parser|template';
+      
+      // 為包含 schema 的保留字表名添加引號
+      const reservedPattern = new RegExp(
+        `CREATE\\s+TABLE\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\.(${reservedWords})\\s*\\(`,
+        'gi'
+      );
+      stmt = stmt.replace(reservedPattern, (match, schema, keyword) => 
+        `CREATE TABLE ${schema}."${keyword}" (`
+      );
+      
+      // 同樣處理 ALTER TABLE
+      const alterPattern = new RegExp(
+        `ALTER\\s+TABLE\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\.(${reservedWords})\\s+`,
+        'gi'
+      );
+      stmt = stmt.replace(alterPattern, (match, schema, keyword) => 
+        `ALTER TABLE ${schema}."${keyword}" `
+      );
+      
+      return stmt + ';';
+    })
     .join('\n\n');
 
   return cleanedSQL;
@@ -263,6 +291,12 @@ function removePostgresFunctions(sql) {
       ''
     );
     
+    // 特別處理 $_$ 定界符（pgAdmin 常用）
+    result = result.replace(
+      /CREATE\s+(OR\s+REPLACE\s+)?FUNCTION\s+[\s\S]*?\$_\$[\s\S]*?\$_\$\s*;/gmi,
+      ''
+    );
+    
     // 處理 PROCEDURE
     result = result.replace(
       /CREATE\s+(OR\s+REPLACE\s+)?PROCEDURE\s+[\s\S]*?AS\s+\$[\s\S]*?\$\s*;/gmi,
@@ -276,6 +310,12 @@ function removePostgresFunctions(sql) {
     
     result = result.replace(
       /CREATE\s+(OR\s+REPLACE\s+)?PROCEDURE\s+[\s\S]*?\$[a-zA-Z0-9_]*\$[\s\S]*?\$[a-zA-Z0-9_]*\$\s*;/gmi,
+      ''
+    );
+    
+    // 特別處理 $_$ 定界符（pgAdmin 常用）
+    result = result.replace(
+      /CREATE\s+(OR\s+REPLACE\s+)?PROCEDURE\s+[\s\S]*?\$_\$[\s\S]*?\$_\$\s*;/gmi,
       ''
     );
     
@@ -295,6 +335,11 @@ function removePostgresFunctions(sql) {
       ''
     );
     
+    result = result.replace(
+      /ALTER\s+FUNCTION\s+[\s\S]*?\$_\$[\s\S]*?\$_\$\s*;/gmi,
+      ''
+    );
+    
     // 處理 ALTER PROCEDURE
     result = result.replace(
       /ALTER\s+PROCEDURE\s+[\s\S]*?AS\s+\$[\s\S]*?\$\s*;/gmi,
@@ -308,6 +353,11 @@ function removePostgresFunctions(sql) {
     
     result = result.replace(
       /ALTER\s+PROCEDURE\s+[\s\S]*?\$[a-zA-Z0-9_]*\$[\s\S]*?\$[a-zA-Z0-9_]*\$\s*;/gmi,
+      ''
+    );
+    
+    result = result.replace(
+      /ALTER\s+PROCEDURE\s+[\s\S]*?\$_\$[\s\S]*?\$_\$\s*;/gmi,
       ''
     );
     

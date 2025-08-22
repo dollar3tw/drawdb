@@ -28,7 +28,9 @@ function startApp() {
     origin: true,
     credentials: true
   }));
-  app.use(express.json());
+  // 增加請求大小限制（預設是 100kb，改為 50mb）
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
   
   // Session middleware for SSO
   app.use(session({

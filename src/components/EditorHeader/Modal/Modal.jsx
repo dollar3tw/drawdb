@@ -35,10 +35,9 @@ import Language from "./Language";
 // import Share from "./Share"; // Gist-related Share component removed
 import CodeEditor from "../../CodeEditor";
 import { useTranslation } from "react-i18next";
-import { importSQL } from "../../../utils/importSQL";
 import { databases } from "../../../data/databases";
-import { preprocessSQL, detectUnsupportedStatements } from "../../../utils/importSQL/preprocessor";
 import { smartMerge, generateChangeSummary } from "../../../utils/importSQL/smartMerge";
+import { extractFromSQL } from "../../../utils/importSQL/simpleExtractor";
 import { isRtl } from "../../../i18n/utils/rtl";
 
 const extensionToLanguage = {
@@ -145,52 +144,36 @@ export default function Modal({
   };
 
   const parseSQLAndLoadDiagram = async () => {
-    const targetDatabase = database === DB.GENERIC ? importDb : database;
-
-    // 先進行預處理
-    let processedSQL = importSource.src;
-    const unsupportedCheck = detectUnsupportedStatements(processedSQL);
+    // 直接使用簡單提取器（特別適合 PostgreSQL/pgAdmin）
+    console.log('使用簡單提取器處理 SQL...');
     
-    if (unsupportedCheck.hasUnsupported) {
-      console.log("發現不支援的語句，正在自動過濾：", unsupportedCheck.unsupportedTypes);
-      processedSQL = preprocessSQL(processedSQL);
+    try {
+      const diagramData = extractFromSQL(importSource.src);
       
-      if (processedSQL.trim() === '') {
+      if (diagramData.tables.length === 0) {
         setError({
           type: STATUS.ERROR,
-          message: `SQL 檔案不包含支援的表格定義語句（CREATE TABLE）。請確保檔案包含資料庫結構定義。`,
+          message: `無法從 SQL 檔案中提取表格資訊。請確保檔案包含 CREATE TABLE 語句。`,
         });
         return;
       }
-    }
-
-    let ast = null;
-    try {
-      if (targetDatabase === DB.ORACLESQL) {
-        const oracleParser = new OracleParser();
-        ast = oracleParser.parse(processedSQL);
-      } else {
-        const parser = new Parser();
-        ast = parser.astify(processedSQL, {
-          database: targetDatabase,
-        });
-      }
+      
+      console.log(`成功提取：${diagramData.tables.length} 個表格，${diagramData.relationships.length} 個關聯`);
+      
+      // 繼續執行匯入流程
+      await processImportedData(diagramData);
     } catch (error) {
-      const message = error.location
-        ? `${error.name} [Ln ${error.location.start.line}, Col ${error.location.start.column}]: ${error.message}`
-        : `解析錯誤：${error.message}`;
-
-      setError({ type: STATUS.ERROR, message });
-      return;
+      console.error('提取失敗:', error);
+      setError({ 
+        type: STATUS.ERROR, 
+        message: `匯入失敗：${error.message}` 
+      });
     }
-
+  };
+  
+  // 處理匯入的資料（共用函數）
+  const processImportedData = async (diagramData) => {
     try {
-      const diagramData = importSQL(
-        ast,
-        database === DB.GENERIC ? importDb : database,
-        database,
-      );
-
       if (importSource.overwrite) {
         // 完全覆寫
         console.log('覆寫模式 - 匯入的圖表資料:', diagramData);

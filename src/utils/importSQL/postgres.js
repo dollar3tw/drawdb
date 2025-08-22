@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
-import { Cardinality, DB } from "../../data/constants";
-import { dbToTypes } from "../../data/datatypes";
+import { Cardinality, DB } from "../../data/constants.js";
+import { dbToTypes } from "../../data/datatypes.js";
 import { buildSQLFromAST } from "./shared";
 
 // PostgreSQL 型別對應處理函數

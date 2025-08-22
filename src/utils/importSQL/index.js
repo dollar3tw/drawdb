@@ -1,4 +1,4 @@
-import { DB } from "../../data/constants";
+import { DB } from "../../data/constants.js";
 import { arrangeTables } from "../arrangeTables";
 import { fromMariaDB } from "./mariadb";
 import { fromMSSQL } from "./mssql";

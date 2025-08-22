@@ -117,21 +117,37 @@ function mergeTable(existingTable, newTable) {
  * @param {array} existingRelationships - 現有的關聯
  * @param {array} newRelationships - 新的關聯
  * @param {object} tableIdMap - 表格 ID 映射
+ * @param {array} mergedTables - 合併後的表格（用於查找欄位）
+ * @param {object} importedData - 原始匯入資料
  * @returns {array} - 合併後的關聯
  */
-function mergeRelationships(existingRelationships, newRelationships, tableIdMap) {
+function mergeRelationships(existingRelationships, newRelationships, tableIdMap, mergedTables, importedData) {
   const mergedRelationships = [];
+  const existingRelationshipNames = new Set();
   const existingRelationshipKeys = new Set();
   
-  // 建立現有關聯的鍵值集合
+  // 建立現有關聯的名稱集合和鍵值集合
   existingRelationships.forEach(rel => {
+    // 使用關聯名稱作為主要判斷依據
+    if (rel.name) {
+      existingRelationshipNames.add(rel.name);
+    }
+    
+    // 同時建立基於表格ID和欄位ID的鍵值（作為備用）
     const key = `${rel.startTableId}_${rel.startFieldId}_${rel.endTableId}_${rel.endFieldId}`;
     existingRelationshipKeys.add(key);
+    
     mergedRelationships.push(rel);
   });
   
   // 添加新關聯
   newRelationships.forEach(newRel => {
+    // 首先檢查關聯名稱是否已存在
+    if (newRel.name && existingRelationshipNames.has(newRel.name)) {
+      // 同名關聯已存在，跳過
+      return;
+    }
+    
     // 更新表格 ID
     const mappedRel = {
       ...newRel,
@@ -139,13 +155,42 @@ function mergeRelationships(existingRelationships, newRelationships, tableIdMap)
       endTableId: tableIdMap[newRel.endTableId] || newRel.endTableId,
     };
     
-    const key = `${mappedRel.startTableId}_${mappedRel.startFieldId}_${mappedRel.endTableId}_${mappedRel.endFieldId}`;
+    // 嘗試找到對應的欄位ID（因為欄位ID可能已經改變）
+    const startTable = mergedTables.find(t => t.id === mappedRel.startTableId);
+    const endTable = mergedTables.find(t => t.id === mappedRel.endTableId);
     
-    if (!existingRelationshipKeys.has(key)) {
-      mergedRelationships.push({
-        ...mappedRel,
-        id: mergedRelationships.length,
-      });
+    if (startTable && endTable) {
+      // 找到原始新匯入資料中的表格以取得欄位名稱
+      const originalStartTable = newRelationships.find(r => r.id === newRel.id) ? 
+        importedData.tables.find(t => t.id === newRel.startTableId) : null;
+      const originalEndTable = newRelationships.find(r => r.id === newRel.id) ? 
+        importedData.tables.find(t => t.id === newRel.endTableId) : null;
+      
+      if (originalStartTable && originalEndTable) {
+        // 根據原始欄位ID找到欄位名稱
+        const startFieldName = originalStartTable.fields.find(f => f.id === newRel.startFieldId)?.name;
+        const endFieldName = originalEndTable.fields.find(f => f.id === newRel.endFieldId)?.name;
+        
+        if (startFieldName && endFieldName) {
+          const startField = startTable.fields.find(f => f.name === startFieldName);
+          const endField = endTable.fields.find(f => f.name === endFieldName);
+          
+          if (startField && endField) {
+            mappedRel.startFieldId = startField.id;
+            mappedRel.endFieldId = endField.id;
+            
+            // 檢查這個關聯是否已經存在（基於更新後的ID）
+            const key = `${mappedRel.startTableId}_${mappedRel.startFieldId}_${mappedRel.endTableId}_${mappedRel.endFieldId}`;
+            
+            if (!existingRelationshipKeys.has(key)) {
+              mergedRelationships.push({
+                ...mappedRel,
+                id: mergedRelationships.length,
+              });
+            }
+          }
+        }
+      }
     }
   });
   
@@ -240,7 +285,9 @@ export function smartMerge(existingData, importedData) {
   const mergedRelationships = mergeRelationships(
     existingData.relationships || [],
     importedData.relationships || [],
-    tableIdMap
+    tableIdMap,
+    mergedTables,
+    importedData
   );
   
   // 記錄新增的關聯
