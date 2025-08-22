@@ -448,7 +448,7 @@ export default function WorkSpace() {
   }, [saveState, save]);
 
   useEffect(() => {
-    document.title = "Editor | drawDB";
+    document.title = "Editor | MiTDB";
 
     load();
   }, [load]); // 'load' dependency is correct

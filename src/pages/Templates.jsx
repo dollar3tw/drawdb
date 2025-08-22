@@ -41,7 +41,7 @@ export default function Templates() {
   };
 
   useEffect(() => {
-    document.title = "Templates | drawDB";
+    document.title = "Templates | MiTDB";
     loadTemplates();
   }, []);
 
@@ -202,7 +202,7 @@ export default function Templates() {
       </div>
       <hr className="border-zinc-300 my-1" />
       <div className="text-center text-sm py-3">
-        &copy; 2024 <strong>drawDB</strong> - All right reserved.
+        &copy; 2024 <strong>MiTDB</strong> - All rights reserved.
       </div>
     </div>
   );

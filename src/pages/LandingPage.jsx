@@ -106,7 +106,7 @@ export default function LandingPage() {
   useEffect(() => {
     document.body.setAttribute("theme-mode", "light");
     document.title =
-      "drawDB | Online database diagram editor and SQL generator";
+      "MiTDB | Online Database Diagram Editor";
   }, []);
 
   // 專門監聽認證狀態變更的 useEffect
@@ -146,7 +146,7 @@ export default function LandingPage() {
             <FadeIn duration={0.75}>
               {!isAuthenticated && (
                 <div className="text-center">
-                  <h2 className="text-2xl mt-1 font-medium mb-6">歡迎使用 DrawDB</h2>
+                  <h2 className="text-2xl mt-1 font-medium mb-6">歡迎使用 MiTDB</h2>
                   <p className="text-gray-600 mb-6">請登入以查看和管理您的圖表</p>
                 </div>
               )}
@@ -283,7 +283,7 @@ export default function LandingPage() {
 
       {/* Contact us */}
       <div className="text-center text-sm py-3">
-        &copy; 2024 <strong>drawDB</strong> - All right reserved.
+        &copy; 2024 <strong>MiTDB</strong> - All rights reserved.
       </div>
       
       {/* Invite Collaborator Modal */}

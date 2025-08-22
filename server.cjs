@@ -102,11 +102,11 @@ function startApp() {
   // Start the server
   app.listen(PORT, () => {
     console.log('🎉 ================================');
-    console.log('🚀 DrawDB 整合式服務已啟動！');
+    console.log('🚀 MiTDB 整合式服務已啟動！');
     console.log('🎉 ================================');
     console.log(`📱 網站地址: http://localhost:${PORT}`);
     console.log(`🔗 API 服務: http://localhost:${PORT}/api`);
-    console.log(`💾 資料庫: SQLite (database/drawdb.sqlite)`);
+    console.log(`💾 資料庫: SQLite (database/mitdb.sqlite)`);
     console.log(`🌍 環境: ${process.env.NODE_ENV || 'development'}`);
     console.log('🎉 ================================');
     console.log('✨ 所有人都可以透過網址存取此服務！');

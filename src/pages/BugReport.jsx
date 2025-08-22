@@ -127,7 +127,7 @@ export default function BugReport() {
 
   useEffect(() => {
     setTheme(localStorage.getItem("theme"));
-    document.title = "Report a bug | drawDB";
+    document.title = "Report a bug | MiTDB";
     document.body.setAttribute("class", "theme");
   }, [setTheme]);
 
@@ -241,7 +241,7 @@ export default function BugReport() {
         } my-1`}
       />
       <div className="text-center text-sm py-3">
-        &copy; 2024 <strong>drawDB</strong> - All right reserved.
+        &copy; 2024 <strong>MiTDB</strong> - All rights reserved.
       </div>
     </>
   );
