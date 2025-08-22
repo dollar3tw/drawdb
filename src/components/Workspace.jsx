@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext } from "react";
+import { useState, useEffect, useCallback, createContext, useRef } from "react";
 import ControlPanel from "./EditorHeader/ControlPanel";
 import Canvas from "./EditorCanvas/Canvas";
 import { CanvasContextProvider } from "../context/CanvasContext";
@@ -435,12 +435,10 @@ export default function WorkSpace() {
     notes?.length,
     types?.length,
     relationships?.length,
-    transform.zoom, // Assuming zoom changes should trigger save
-    transform.pan, // Assuming pan changes should trigger save
     title,
     setSaveState,
-  // Added other relevant state that should trigger autosave if changed
-  database, enums 
+    database, 
+    enums 
   ]);
 
   useEffect(() => {

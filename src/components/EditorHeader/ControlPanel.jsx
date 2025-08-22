@@ -1651,7 +1651,6 @@ export default function ControlPanel({
                 }}
                 onClick={() => setModal(MODAL.RENAME)}
               >
-                {window.name.split(" ")[0] === "t" ? "Templates/" : "Diagrams/"}
                 {title}
               </div>
               {(showEditName || modal === MODAL.RENAME) && <IconEdit />}
