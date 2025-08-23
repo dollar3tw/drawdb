@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Routes, Route, useLocation, Navigate, Outlet } from "react-router-dom";
 import { useLayoutEffect } from "react";
 import Editor from "./pages/Editor";
 import BugReport from "./pages/BugReport";
@@ -32,36 +32,56 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+// 建立路由配置，啟用 v7 future flags
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <RootLayout />,
+    children: [
+      { index: true, element: <LandingPage /> },
+      {
+        path: "editor",
+        element: (
+          <ProtectedRoute>
+            <ThemedPage>
+              <Editor />
+            </ThemedPage>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "bug-report",
+        element: (
+          <ThemedPage>
+            <BugReport />
+          </ThemedPage>
+        ),
+      },
+      { path: "templates", element: <Templates /> },
+      { path: "*", element: <NotFound /> },
+    ],
+  },
+], {
+  future: {
+    v7_startTransition: true,
+    v7_relativeSplatPath: true,
+  },
+});
+
+function RootLayout() {
+  return (
+    <>
+      <RestoreScroll />
+      <Outlet />
+    </>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <SettingsContextProvider>
-        <BrowserRouter>
-          <RestoreScroll />
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route
-              path="/editor"
-              element={
-                <ProtectedRoute>
-                  <ThemedPage>
-                    <Editor />
-                  </ThemedPage>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bug-report"
-              element={
-                <ThemedPage>
-                  <BugReport />
-                </ThemedPage>
-              }
-            />
-            <Route path="/templates" element={<Templates />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <RouterProvider router={router} />
       </SettingsContextProvider>
     </AuthProvider>
   );

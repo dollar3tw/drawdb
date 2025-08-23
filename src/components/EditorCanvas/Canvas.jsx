@@ -755,8 +755,8 @@ export default function Canvas() {
               setInitCoords={setInitCoords}
             />
           ))}
-          {relationships.map((e, i) => (
-            <Relationship key={i} data={e} />
+          {relationships.map((e) => (
+            <Relationship key={`${e.startTableId}-${e.startFieldId}-${e.endTableId}-${e.endFieldId}`} data={e} />
           ))}
           {tables.map((table) => (
             <Table
