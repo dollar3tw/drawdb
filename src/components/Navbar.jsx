@@ -2,16 +2,18 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import logo from "../assets/logo_light_160.png";
 import { SideSheet, Button, Dropdown, Avatar, Tag, Space } from "@douyinfe/semi-ui";
-import { IconMenu, IconUser, IconSetting, IconExit } from "@douyinfe/semi-icons";
+import { IconMenu, IconUser, IconSetting, IconExit, IconKey } from "@douyinfe/semi-icons";
 import { socials } from "../data/socials";
 import { useAuth } from "../context/AuthContext";
 import LoginModal from "./LoginModal";
 import UserManagement from "./UserManagement";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 export default function Navbar() {
   const [openMenu, setOpenMenu] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const { user, logout, isAuthenticated, isMitAdmin } = useAuth();
 
   const roleColors = {
@@ -40,6 +42,13 @@ export default function Navbar() {
         console.log('Open profile');
       }
     },
+    // 只對非 SSO 用戶顯示更改密碼選項
+    ...(user?.auth_source !== 'SSO' ? [{
+      node: 'item',
+      name: '更改密碼',
+      icon: <IconKey />,
+      onClick: () => setShowChangePasswordModal(true)
+    }] : []),
     ...(isMitAdmin ? [{
       node: 'item',
       name: '使用者管理',
@@ -131,6 +140,20 @@ export default function Navbar() {
                 </div>
               </div>
               
+              {/* 只對非 SSO 用戶顯示更改密碼選項 */}
+              {user?.auth_source !== 'SSO' && (
+                <Button
+                  block
+                  icon={<IconKey />}
+                  onClick={() => {
+                    setShowChangePasswordModal(true);
+                    setOpenMenu(false);
+                  }}
+                >
+                  更改密碼
+                </Button>
+              )}
+              
               {isMitAdmin && (
                 <Button
                   block
@@ -184,6 +207,12 @@ export default function Navbar() {
           onCancel={() => setShowUserManagement(false)}
         />
       )}
+
+      {/* 更改密碼模態框 */}
+      <ChangePasswordModal
+        visible={showChangePasswordModal}
+        onCancel={() => setShowChangePasswordModal(false)}
+      />
     </>
   );
 }

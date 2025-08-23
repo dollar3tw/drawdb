@@ -145,13 +145,23 @@ router.put('/profile', authenticateToken, async (req, res) => {
     const { username, email, currentPassword, newPassword } = req.body;
     const userId = req.user.id;
 
+    // 獲取用戶資訊
+    const user = await dbHelpers.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ error: '用戶不存在' });
+    }
+
+    // SSO 用戶不允許更改密碼
+    if (newPassword && user.auth_source === 'SSO') {
+      return res.status(400).json({ error: 'SSO 用戶無法更改密碼，請通過 SSO 系統管理密碼' });
+    }
+
     // 如果要更新密碼，需要驗證當前密碼
     if (newPassword) {
       if (!currentPassword) {
         return res.status(400).json({ error: '更新密碼需要提供當前密碼' });
       }
 
-      const user = await dbHelpers.getUserById(userId);
       const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
       
       if (!isCurrentPasswordValid) {
@@ -181,6 +191,51 @@ router.put('/profile', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ error: '更新用戶資訊失敗' });
+  }
+});
+
+// 用戶更改自己的密碼（專門的端點）
+router.put('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    // 驗證必填欄位
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: '當前密碼和新密碼為必填項' });
+    }
+
+    // 獲取用戶資訊
+    const user = await dbHelpers.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ error: '用戶不存在' });
+    }
+
+    // SSO 用戶不允許更改密碼
+    if (user.auth_source === 'SSO') {
+      return res.status(400).json({ error: 'SSO 用戶無法更改密碼，請通過 SSO 系統管理密碼' });
+    }
+
+    // 驗證當前密碼
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({ error: '當前密碼錯誤' });
+    }
+
+    // 密碼強度檢查
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: '新密碼長度至少需要 6 個字元' });
+    }
+
+    // 更新密碼
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await dbHelpers.updateUser(userId, { password: hashedPassword });
+
+    res.json({ message: '密碼更改成功' });
+
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: '更改密碼失敗' });
   }
 });
 
@@ -219,6 +274,61 @@ router.put('/users/:id/role', authenticateToken, requireRoot, async (req, res) =
   } catch (error) {
     console.error('Update user role error:', error);
     res.status(500).json({ error: '更新用戶角色失敗' });
+  }
+});
+
+// 管理員功能：重設用戶密碼
+router.put('/users/:id/reset-password', authenticateToken, requireRoot, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    // 驗證必填欄位
+    if (!newPassword) {
+      return res.status(400).json({ error: '新密碼為必填項' });
+    }
+
+    // 密碼強度檢查
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: '密碼長度至少需要 6 個字元' });
+    }
+
+    // 獲取目標用戶資訊
+    const targetUser = await dbHelpers.getUserById(id);
+    if (!targetUser) {
+      return res.status(404).json({ error: '用戶不存在' });
+    }
+
+    // SSO 用戶不允許重設密碼
+    if (targetUser.auth_source === 'SSO') {
+      return res.status(400).json({ error: '無法重設 SSO 用戶的密碼' });
+    }
+
+    // 防止重設自己的密碼（應該使用 change-password 端點）
+    if (parseInt(id) === req.user.id) {
+      return res.status(400).json({ error: '不能重設自己的密碼，請使用密碼更改功能' });
+    }
+
+    // 更新密碼
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const updatedUser = await dbHelpers.updateUser(id, { password: hashedPassword });
+    
+    if (!updatedUser) {
+      return res.status(404).json({ error: '用戶不存在' });
+    }
+
+    res.json({
+      message: '密碼重設成功',
+      user: {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email
+      }
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: '重設密碼失敗' });
   }
 });
 

@@ -8,9 +8,11 @@ import {
   Popconfirm,
   Tag,
   Space,
-  Typography
+  Typography,
+  Input,
+  Form
 } from '@douyinfe/semi-ui';
-import { IconDelete, IconEdit, IconRefresh } from '@douyinfe/semi-icons';
+import { IconDelete, IconEdit, IconRefresh, IconKey } from '@douyinfe/semi-icons';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
@@ -20,6 +22,9 @@ const UserManagement = ({ visible, onCancel }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [resetPasswordModalVisible, setResetPasswordModalVisible] = useState(false);
+  const [resetPasswordUserId, setResetPasswordUserId] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
   const { API_BASE_URL, user: currentUser } = useAuth();
 
   const roleColors = {
@@ -78,6 +83,32 @@ const UserManagement = ({ visible, onCancel }) => {
     }
   };
 
+  const handleShowResetPasswordModal = (userId) => {
+    setResetPasswordUserId(userId);
+    setNewPassword('');
+    setResetPasswordModalVisible(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      Toast.error('密碼長度至少需要 6 個字元');
+      return;
+    }
+
+    try {
+      await axios.put(`${API_BASE_URL}/api/auth/users/${resetPasswordUserId}/reset-password`, {
+        newPassword: newPassword
+      });
+      Toast.success('密碼重設成功');
+      setResetPasswordModalVisible(false);
+      setNewPassword('');
+    } catch (error) {
+      console.error('Failed to reset password:', error);
+      const errorMessage = error.response?.data?.error || '重設密碼失敗';
+      Toast.error(errorMessage);
+    }
+  };
+
   const columns = [
     {
       title: 'ID',
@@ -118,6 +149,16 @@ const UserManagement = ({ visible, onCancel }) => {
       ),
     },
     {
+      title: '認證方式',
+      dataIndex: 'auth_source',
+      width: 100,
+      render: (authSource) => (
+        <Tag color={authSource === 'SSO' ? 'purple' : 'cyan'}>
+          {authSource || 'LocalDB'}
+        </Tag>
+      ),
+    },
+    {
       title: '註冊時間',
       dataIndex: 'createdAt',
       width: 150,
@@ -141,9 +182,18 @@ const UserManagement = ({ visible, onCancel }) => {
     },
     {
       title: '操作',
-      width: 100,
+      width: 150,
       render: (_, record) => (
         <Space>
+          {/* 重設密碼按鈕 - 只對非 SSO 用戶顯示 */}
+          {record.auth_source !== 'SSO' && record.id !== currentUser?.id && (
+            <Button
+              icon={<IconKey />}
+              size="small"
+              onClick={() => handleShowResetPasswordModal(record.id)}
+              title="重設密碼"
+            />
+          )}
           <Popconfirm
             title="確定要刪除此使用者嗎？"
             content="此操作不可撤銷"
@@ -196,6 +246,30 @@ const UserManagement = ({ visible, onCancel }) => {
         rowKey="id"
         size="small"
       />
+
+      {/* 重設密碼 Modal */}
+      <Modal
+        title="重設密碼"
+        visible={resetPasswordModalVisible}
+        onCancel={() => setResetPasswordModalVisible(false)}
+        onOk={handleResetPassword}
+        width={400}
+      >
+        <Form>
+          <Form.Input
+            field="newPassword"
+            label="新密碼"
+            type="password"
+            value={newPassword}
+            onChange={setNewPassword}
+            placeholder="請輸入新密碼（至少 6 個字元）"
+            rules={[
+              { required: true, message: '請輸入新密碼' },
+              { min: 6, message: '密碼長度至少需要 6 個字元' }
+            ]}
+          />
+        </Form>
+      </Modal>
     </Modal>
   );
 };
