@@ -79,6 +79,7 @@ import { jsonToDocumentation } from "../../utils/exportAs/documentation";
 import { socials } from "../../data/socials";
 import { toDBML } from "../../utils/exportAs/dbml";
 import { exportToPNG } from "../../utils/exportAs/png";
+import { exportToWord } from "../../utils/exportAs/word";
 // import { exportSavedData } from "../../utils/exportSavedData"; // Functionality removed
 import { nanoid } from "nanoid";
 import { useAuth } from "../../context/AuthContext";
@@ -1096,6 +1097,26 @@ export default function ControlPanel({
                   Toast.error(t("export_error", { error: error.message }));
                 }
               });
+            },
+          },
+          {
+            name: "Word 文件 (.docx)",
+            function: async () => {
+              const result = await exportToWord(
+                {
+                  tables: tables,
+                  relationships: relationships,
+                  notes: notes,
+                  areas: areas
+                },
+                title || "資料庫設計文件"
+              );
+              
+              if (result.success) {
+                Toast.success(t("export_success", { filename: result.filename }));
+              } else {
+                Toast.error(t("export_error", { error: result.error }));
+              }
             },
           },
         ],
