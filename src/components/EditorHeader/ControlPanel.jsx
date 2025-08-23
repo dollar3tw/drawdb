@@ -115,14 +115,14 @@ export default function ControlPanel({
         if (typeof navigateTo === 'function') {
           navigateTo();
         } else {
-          navigate(navigateTo);
+          (window.navigate || navigate)(navigateTo);
         }
       }
     } else {
       if (typeof navigateTo === 'function') {
         navigateTo();
       } else {
-        navigate(navigateTo);
+        (window.navigate || navigate)(navigateTo);
       }
     }
   };
@@ -823,7 +823,7 @@ export default function ControlPanel({
                 setUndoStack([]);
                 setRedoStack([]);
                 window.name = ""; // Clear window.name to signify no specific diagram is loaded
-                navigate("/"); // 刪除後返回首頁
+                (window.navigate || navigate)("/"); // 刪除後返回首頁
               } catch (error) {
                 console.error("Failed to delete diagram:", error);
                 Toast.error(t("failed_to_delete_diagram"));

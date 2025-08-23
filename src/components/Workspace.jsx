@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import ControlPanel from "./EditorHeader/ControlPanel";
 import Canvas from "./EditorCanvas/Canvas";
 import { CanvasContextProvider } from "../context/CanvasContext";
@@ -39,6 +40,8 @@ import { useSearchParams } from "react-router-dom";
 const SIDEPANEL_MIN_WIDTH = 384;
 
 export default function WorkSpace() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [id, setId] = useState(0); // Will now store backend ID
   const [title, setTitle] = useState("Untitled Diagram");
   const [resize, setResize] = useState(false);
@@ -50,6 +53,7 @@ export default function WorkSpace() {
   const [previousData, setPreviousData] = useState(null); // 新增狀態來追蹤上一次的資料
   const [isCollaborative, setIsCollaborative] = useState(false); // 新增狀態來追蹤是否為協作圖表
   const [isInitialLoad, setIsInitialLoad] = useState(true); // 新增狀態來追蹤是否為初始載入
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // 追蹤是否有未儲存的變更
   const { layout } = useLayout();
   const { settings } = useSettings();
   const { types, setTypes } = useTypes();
@@ -136,6 +140,7 @@ export default function WorkSpace() {
             setLastSaved(new Date(newDiagram.lastModified).toLocaleString());
             window.name = `d ${newDiagram.id}`;
             setSaveState(State.SAVED);
+            setHasUnsavedChanges(false); // 清除未儲存標記
             // 記錄修訂歷程
             await recordRevision(newDiagram.id, 'CREATE', 'DIAGRAM', `創建圖表「${newDiagram.name}」`);
           } finally {
@@ -156,6 +161,7 @@ export default function WorkSpace() {
           // Backend returns the full updated diagram, could update other fields if necessary
           setLastSaved(new Date(updatedDiagram.lastModified).toLocaleString());
           setSaveState(State.SAVED);
+          setHasUnsavedChanges(false); // 清除未儲存標記
           
           // 記錄詳細的修訂歷程
           await recordDetailedRevision(updatedDiagram.id, previousData, currentData);
@@ -457,8 +463,12 @@ export default function WorkSpace() {
     
     // 如果資料沒有變更，不更新儲存狀態
     if (previousData && currentData === savedData) {
+      setHasUnsavedChanges(false);
       return;
     }
+    
+    // 標記有未儲存的變更
+    setHasUnsavedChanges(true);
 
     if (settings.autosave) {
       setSaveState(State.SAVING);
@@ -492,6 +502,53 @@ export default function WorkSpace() {
 
     load();
   }, [load]); // 'load' dependency is correct
+
+  // 處理瀏覽器離開頁面的提醒
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // 使用 hasUnsavedChanges 來判斷是否有未儲存的變更
+      if (hasUnsavedChanges) {
+        console.log('Preventing unload, hasUnsavedChanges:', hasUnsavedChanges);
+        e.preventDefault();
+        e.returnValue = '您有未儲存的變更，確定要離開嗎？';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
+
+  // 處理應用內路由切換的攔截
+  useEffect(() => {
+    // 儲存原始的 navigate 函數
+    const originalNavigate = window.navigate || navigate;
+    
+    // 覆寫全域 navigate 函數
+    window.navigate = (to, options) => {
+      if (hasUnsavedChanges) {
+        Modal.confirm({
+          title: '未儲存的變更',
+          content: '您有未儲存的變更，確定要離開嗎？',
+          okText: '離開',
+          cancelText: '留在此頁',
+          onOk: () => {
+            originalNavigate(to, options);
+          }
+        });
+      } else {
+        originalNavigate(to, options);
+      }
+    };
+    
+    return () => {
+      // 清理：恢復原始的 navigate 函數
+      window.navigate = originalNavigate;
+    };
+  }, [navigate, hasUnsavedChanges]);
 
   return (
     <div className="h-full flex flex-col overflow-hidden theme">
