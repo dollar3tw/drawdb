@@ -78,6 +78,7 @@ import { jsonToDocumentation } from "../../utils/exportAs/documentation";
 // import { IdContext } from "../Workspace"; // Gist IdContext removed
 import { socials } from "../../data/socials";
 import { toDBML } from "../../utils/exportAs/dbml";
+import { exportToPNG } from "../../utils/exportAs/png";
 // import { exportSavedData } from "../../utils/exportSavedData"; // Functionality removed
 import { nanoid } from "nanoid";
 import { useAuth } from "../../context/AuthContext";
@@ -1076,6 +1077,25 @@ export default function ControlPanel({
                 data: result,
                 extension: "md",
               }));
+            },
+          },
+          {
+            name: "PNG",
+            function: () => {
+              exportToPNG({
+                tables: tables,
+                relationships: relationships,
+                areas: areas,
+                notes: notes,
+                title: title,
+                settings: settings,
+                onSuccess: (filename) => {
+                  Toast.success(t("export_success", { filename }));
+                },
+                onError: (error) => {
+                  Toast.error(t("export_error", { error: error.message }));
+                }
+              });
             },
           },
         ],

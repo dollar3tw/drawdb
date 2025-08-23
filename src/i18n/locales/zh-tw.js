@@ -155,6 +155,8 @@ const zh_tw = {
     rename_diagram: "重新命名圖表",
     export: "匯出",
     export_image: "匯出圖片",
+    export_success: "成功匯出 {{filename}}",
+    export_error: "匯出失敗: {{error}}",
     create: "建立",
     confirm: "確認",
     last_modified: "最後修改",

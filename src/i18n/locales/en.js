@@ -156,6 +156,8 @@ const en = {
     rename_diagram: "Rename diagram",
     export: "Export",
     export_image: "Export image",
+    export_success: "Successfully exported {{filename}}",
+    export_error: "Export failed: {{error}}",
     create: "Create",
     confirm: "Confirm",
     last_modified: "Last modified",
