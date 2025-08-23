@@ -82,13 +82,13 @@ export const AuthProvider = ({ children }) => {
         password
       });
 
-      const { token: newToken, user: userData } = response.data;
+      const { token: newToken, user: userData, mustChangePassword } = response.data;
       
       setToken(newToken);
       setUser(userData);
       localStorage.setItem('auth_token', newToken);
       
-      return { success: true, user: userData };
+      return { success: true, user: userData, mustChangePassword };
     } catch (error) {
       console.error('Login failed:', error);
       return { 

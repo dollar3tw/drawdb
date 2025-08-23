@@ -11,7 +11,7 @@ import axios from 'axios';
 
 const { Text } = Typography;
 
-const ChangePasswordModal = ({ visible, onCancel }) => {
+const ChangePasswordModal = ({ visible, onCancel, isForced = false }) => {
   const [loading, setLoading] = useState(false);
   const [hasModified, setHasModified] = useState(false);
   const { API_BASE_URL, user } = useAuth();
@@ -39,6 +39,12 @@ const ChangePasswordModal = ({ visible, onCancel }) => {
   };
 
   const handleCancel = () => {
+    // 如果是強制更改密碼，不允許取消
+    if (isForced) {
+      Toast.warning('首次登入必須更改密碼');
+      return;
+    }
+    
     if (hasModified) {
       Modal.confirm({
         title: '確認離開',
@@ -60,11 +66,13 @@ const ChangePasswordModal = ({ visible, onCancel }) => {
 
   return (
     <Modal
-      title="更改密碼"
+      title={isForced ? "首次登入 - 請更改密碼" : "更改密碼"}
       visible={visible}
       onCancel={handleCancel}
       footer={null}
       width={450}
+      closable={!isForced}
+      maskClosable={!isForced}
     >
       {user?.auth_source === 'SSO' ? (
         <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -124,12 +132,14 @@ const ChangePasswordModal = ({ visible, onCancel }) => {
           />
           
           <div style={{ marginTop: 24, textAlign: 'right' }}>
-            <Button
-              onClick={handleCancel}
-              style={{ marginRight: 8 }}
-            >
-              取消
-            </Button>
+            {!isForced && (
+              <Button
+                onClick={handleCancel}
+                style={{ marginRight: 8 }}
+              >
+                取消
+              </Button>
+            )}
             <Button
               type="primary"
               htmlType="submit"

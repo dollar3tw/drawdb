@@ -53,12 +53,19 @@ const initDb = (callback = () => {}) => {
       relationships TEXT,
       notes TEXT,
       areas TEXT,
+      enums TEXT DEFAULT '[]',
+      types TEXT DEFAULT '[]',
       pan TEXT,
       zoom REAL,
-      todos TEXT DEFAULT '[]',
       lastModified DATETIME DEFAULT CURRENT_TIMESTAMP,
       userId INTEGER,
-      FOREIGN KEY (userId) REFERENCES users(id)
+      is_collaborative INTEGER DEFAULT 0,
+      promoted_by INTEGER,
+      promoted_at DATETIME,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (userId) REFERENCES users(id),
+      FOREIGN KEY (promoted_by) REFERENCES users(id)
     )`, (err) => {
       if (err) {
         console.error("Error creating diagrams table:", err.message);
@@ -94,6 +101,7 @@ const initDb = (callback = () => {}) => {
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'editor', 'user')),
+      must_change_password INTEGER DEFAULT 0,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       lastLogin DATETIME,
       isActive INTEGER DEFAULT 1
@@ -116,8 +124,8 @@ const initDb = (callback = () => {}) => {
             if (err) {
               console.error("Error hashing default password:", err.message);
             } else {
-              db.run(`INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)`,
-                ['admin', 'admin@mitdb.local', hashedPassword, 'admin'], (err) => {
+              db.run(`INSERT INTO users (username, email, password, role, must_change_password) VALUES (?, ?, ?, ?, ?)`,
+                ['admin', 'admin@mitdb.local', hashedPassword, 'admin', 1], (err) => {
                   if (err) {
                     console.error("Error creating default admin user:", err.message);
                   } else {
@@ -219,6 +227,8 @@ const parseDiagramRow = (row) => {
       row.relationships = JSON.parse(row.relationships);
       row.notes = JSON.parse(row.notes);
       row.areas = JSON.parse(row.areas);
+      row.enums = row.enums ? JSON.parse(row.enums) : [];
+      row.types = row.types ? JSON.parse(row.types) : [];
       row.pan = JSON.parse(row.pan);
     } catch (e) {
       console.error("Error parsing JSON fields for row:", row.id, e);
@@ -233,8 +243,8 @@ const parseDiagramRow = (row) => {
 async function createDiagram(data) {
   return new Promise((resolve, reject) => {
     const currentTimestamp = getCurrentTimestamp();
-    const sql = `INSERT INTO diagrams (name, databaseType, tables, relationships, notes, areas, pan, zoom, userId, lastModified)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO diagrams (name, databaseType, tables, relationships, notes, areas, enums, types, pan, zoom, userId, lastModified)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const params = [
       data.name,
       data.databaseType,
@@ -242,6 +252,8 @@ async function createDiagram(data) {
       JSON.stringify(data.relationships || []),
       JSON.stringify(data.notes || []),
       JSON.stringify(data.areas || []),
+      JSON.stringify(data.enums || []),
+      JSON.stringify(data.types || []),
       JSON.stringify(data.pan || { x: 0, y: 0 }),
       data.zoom == null ? 1 : data.zoom, // Provide default for zoom if null/undefined
       data.userId, // Add userId parameter
@@ -322,6 +334,14 @@ async function updateDiagram(id, data) {
     if (data.areas !== undefined) {
       fields.push("areas = ?");
       params.push(JSON.stringify(data.areas));
+    }
+    if (data.enums !== undefined) {
+      fields.push("enums = ?");
+      params.push(JSON.stringify(data.enums));
+    }
+    if (data.types !== undefined) {
+      fields.push("types = ?");
+      params.push(JSON.stringify(data.types));
     }
     if (data.pan !== undefined) {
       fields.push("pan = ?");

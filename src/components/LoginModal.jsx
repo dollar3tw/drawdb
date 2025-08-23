@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Toast, Tabs, TabPane, Divider } from '@douyinfe/semi-ui';
 import { IconUser, IconLock, IconMail, IconSafe } from '@douyinfe/semi-icons';
 import { useAuth } from '../context/AuthContext';
+import ChangePasswordModal from './ChangePasswordModal';
 
 const LoginModal = ({ visible, onCancel }) => {
   const [activeTab, setActiveTab] = useState('login');
   const [loading, setLoading] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const { login, register } = useAuth();
 
   const handleLogin = async (values) => {
@@ -13,8 +15,14 @@ const LoginModal = ({ visible, onCancel }) => {
     try {
       const result = await login(values.username, values.password);
       if (result.success) {
-        Toast.success('登入成功！');
-        onCancel();
+        if (result.mustChangePassword) {
+          Toast.warning('首次登入需要更改密碼');
+          onCancel(); // 關閉登入視窗
+          setShowChangePassword(true); // 開啟更改密碼視窗
+        } else {
+          Toast.success('登入成功！');
+          onCancel();
+        }
       } else {
         Toast.error(result.error);
       }
@@ -53,6 +61,7 @@ const LoginModal = ({ visible, onCancel }) => {
   };
 
   return (
+    <>
     <Modal
       title="用戶認證"
       visible={visible}
@@ -156,6 +165,14 @@ const LoginModal = ({ visible, onCancel }) => {
         </TabPane>
       </Tabs>
     </Modal>
+    
+    {/* 強制更改密碼彈窗 */}
+    <ChangePasswordModal
+      visible={showChangePassword}
+      onCancel={() => setShowChangePassword(false)}
+      isForced={true}
+    />
+    </>
   );
 };
 

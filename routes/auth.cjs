@@ -97,7 +97,8 @@ router.post('/login', async (req, res) => {
     res.json({
       message: '登入成功',
       token,
-      user
+      user,
+      mustChangePassword: user.must_change_password === 1
     });
 
   } catch (error) {
@@ -227,9 +228,12 @@ router.put('/change-password', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: '新密碼長度至少需要 6 個字元' });
     }
 
-    // 更新密碼
+    // 更新密碼並清除必須更改密碼的標記
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await dbHelpers.updateUser(userId, { password: hashedPassword });
+    await dbHelpers.updateUser(userId, { 
+      password: hashedPassword,
+      must_change_password: 0
+    });
 
     res.json({ message: '密碼更改成功' });
 
