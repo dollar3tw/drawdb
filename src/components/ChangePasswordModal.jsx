@@ -13,6 +13,7 @@ const { Text } = Typography;
 
 const ChangePasswordModal = ({ visible, onCancel }) => {
   const [loading, setLoading] = useState(false);
+  const [hasModified, setHasModified] = useState(false);
   const { API_BASE_URL, user } = useAuth();
   const formApi = React.useRef();
 
@@ -26,6 +27,7 @@ const ChangePasswordModal = ({ visible, onCancel }) => {
       
       Toast.success('密碼更改成功');
       formApi.current?.reset();
+      setHasModified(false);
       onCancel();
     } catch (error) {
       console.error('Failed to change password:', error);
@@ -36,11 +38,31 @@ const ChangePasswordModal = ({ visible, onCancel }) => {
     }
   };
 
+  const handleCancel = () => {
+    if (hasModified) {
+      Modal.confirm({
+        title: '確認離開',
+        content: '您有未儲存的變更，確定要離開嗎？',
+        okText: '確定',
+        cancelText: '取消',
+        onOk: () => {
+          formApi.current?.reset();
+          setHasModified(false);
+          onCancel();
+        }
+      });
+    } else {
+      formApi.current?.reset();
+      setHasModified(false);
+      onCancel();
+    }
+  };
+
   return (
     <Modal
       title="更改密碼"
       visible={visible}
-      onCancel={onCancel}
+      onCancel={handleCancel}
       footer={null}
       width={450}
     >
@@ -59,6 +81,7 @@ const ChangePasswordModal = ({ visible, onCancel }) => {
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 18 }}
           onSubmit={handleSubmit}
+          onChange={() => setHasModified(true)}
         >
           <Form.Input
             field="currentPassword"
@@ -102,7 +125,7 @@ const ChangePasswordModal = ({ visible, onCancel }) => {
           
           <div style={{ marginTop: 24, textAlign: 'right' }}>
             <Button
-              onClick={onCancel}
+              onClick={handleCancel}
               style={{ marginRight: 8 }}
             >
               取消

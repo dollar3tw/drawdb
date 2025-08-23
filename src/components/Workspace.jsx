@@ -49,6 +49,7 @@ export default function WorkSpace() {
   const [isNewDiagram, setIsNewDiagram] = useState(false); // 新增狀態來追蹤是否為新圖表
   const [previousData, setPreviousData] = useState(null); // 新增狀態來追蹤上一次的資料
   const [isCollaborative, setIsCollaborative] = useState(false); // 新增狀態來追蹤是否為協作圖表
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // 新增狀態來追蹤是否為初始載入
   const { layout } = useLayout();
   const { settings } = useSettings();
   const { types, setTypes } = useTypes();
@@ -237,6 +238,10 @@ export default function WorkSpace() {
             enums: d.enums ?? [],
             types: d.types ?? []
           });
+          
+          // 標記初始載入完成並設定為已儲存狀態
+          setIsInitialLoad(false);
+          setSaveState(State.SAVED);
         } else {
           window.name = "";
           if (selectedDb === "") setShowSelectDbModal(true);
@@ -292,6 +297,10 @@ export default function WorkSpace() {
             enums: diagram.enums ?? [],
             types: diagram.types ?? []
           });
+          
+          // 標記初始載入完成並設定為已儲存狀態
+          setIsInitialLoad(false);
+          setSaveState(State.SAVED);
         } else {
           window.name = ""; // Diagram not found
           setSaveState(State.FAILED_TO_LOAD); // Or specific error
@@ -415,6 +424,10 @@ export default function WorkSpace() {
   ]);
 
   useEffect(() => {
+    // 跳過初始載入
+    if (isInitialLoad) return;
+    
+    // 跳過空圖表
     if (
       tables?.length === 0 &&
       areas?.length === 0 &&
@@ -422,6 +435,30 @@ export default function WorkSpace() {
       types?.length === 0
     )
       return;
+
+    // 比較當前資料與上次儲存的資料，確認是否真的有變更
+    const currentData = JSON.stringify({
+      tables,
+      relationships,
+      notes,
+      areas,
+      enums,
+      types
+    });
+    
+    const savedData = JSON.stringify({
+      tables: previousData?.tables || [],
+      relationships: previousData?.relationships || [],
+      notes: previousData?.notes || [],
+      areas: previousData?.areas || [],
+      enums: previousData?.enums || [],
+      types: previousData?.types || []
+    });
+    
+    // 如果資料沒有變更，不更新儲存狀態
+    if (previousData && currentData === savedData) {
+      return;
+    }
 
     if (settings.autosave) {
       setSaveState(State.SAVING);
@@ -441,7 +478,9 @@ export default function WorkSpace() {
     title,
     setSaveState,
     database, 
-    enums 
+    enums,
+    isInitialLoad,
+    previousData
   ]);
 
   useEffect(() => {
