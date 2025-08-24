@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  drawdb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: drawdb:latest
+    container_name: drawdb
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      # 持久化資料庫到宿主機指定目錄（從 .env 讀取路徑）
+      - ${DATA_PATH:-./data}:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      # 請修改以下密鑰為安全的隨機字串
+      - JWT_SECRET=${JWT_SECRET:-mitdb-default-jwt-secret-2024}
+      - SESSION_SECRET=${SESSION_SECRET:-your-session-secret}
+      - ADMIN_DEFAULT_PASSWORD=${ADMIN_DEFAULT_PASSWORD:-admin}
+      # SSO 配置（選填）
+      - SSO_ISSUER=${SSO_ISSUER:-}
+      - SSO_CLIENT_ID=${SSO_CLIENT_ID:-}
+      - SSO_CLIENT_SECRET=${SSO_CLIENT_SECRET:-}
+      - SSO_REDIRECT_URI=${SSO_REDIRECT_URI:-}
+      - STATE_SECRET=${STATE_SECRET:-}
+      - SSO_SCOPE=${SSO_SCOPE:-openid profile email}
+    networks:
+      - drawdb-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  drawdb-network:
+    driver: bridge
+
+# 如果使用綁定掛載（上面的路徑映射），則不需要定義 volumes
+# volumes:
+#   drawdb-data:
+#     driver: local

@@ -1,14 +1,80 @@
+# 依賴和日誌
 node_modules
-npm-debug.log
-.git
-.gitignore
-README.md
-.env
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+*.log
+
+# 測試和覆蓋率
 .nyc_output
 coverage
-.cursor
+*.lcov
+test
+tests
+__tests__
+*.test.js
+*.spec.js
+
+# 版本控制
+.git
+.gitignore
+.gitattributes
+
+# 編輯器配置
 .vscode
-*.log
+.idea
+.cursor
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# 環境配置
+.env
+.env.local
+.env.*.local
+
+# 構建輸出（第一階段會生成）
 dist
+build
+
+# 資料庫文件（運行時生成）
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
 drawdb.sqlite*
-database/*.sqlite* 
+database/*.sqlite*
+data
+
+# 文檔
+README.md
+docs
+*.md
+LICENSE
+
+# Docker 相關
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# 開發工具
+.eslintrc*
+.prettierrc*
+.editorconfig
+nodemon.json
+
+# 臨時文件
+tmp
+temp
+*.tmp
+*.bak
+*.backup
+
+# 其他不需要的文件
+babycare.sql
+*.sql
+CLAUDE.md
+START.md 

@@ -77,6 +77,15 @@ function startApp() {
   const usersRoutes = require('./routes/users.cjs');
   app.use('/api/users', usersRoutes);
 
+  // 健康檢查端點（Docker 用）
+  app.get('/health', (req, res) => {
+    res.status(200).json({ 
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    });
+  });
+
   // 所有非 API 路由都返回 index.html (用於 React Router)
   app.get('*', (req, res) => {
     console.log(`📁 靜態檔案請求: GET ${req.path}`);
