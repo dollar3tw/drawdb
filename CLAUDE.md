@@ -83,14 +83,127 @@ server.cjs        # 整合式服務主檔案
 - `/api/templates/*` - 模板管理
 - `/sso/*` - Synology SSO 整合（OIDC 流程）
 
-### 資料庫架構
+### 資料庫架構（SQLite）
+
+#### users 表 - 使用者管理
 ```sql
-- users (id, username, email, password, role, display_name)
-  - role: 'admin' (最高管理者), 'editor' (編輯者), 'user' (一般用戶)
-- diagrams (id, user_id, diagram_data, is_public, share_id)
-- templates (id, name, thumbnail, diagram_data)
-- user_sessions (id, user_id, created_at, expires_at)
-- revision_history (id, diagram_id, revision_data, revision_message)
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,  -- bcrypt 加密
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'editor', 'user')),
+  display_name TEXT,  -- 顯示名稱
+  auth_source TEXT DEFAULT 'LocalDB' CHECK (auth_source IN ('LocalDB', 'SSO', 'LDAP')),
+  sso_id TEXT,  -- SSO 識別碼
+  must_change_password INTEGER DEFAULT 0,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  lastLogin DATETIME,
+  isActive INTEGER DEFAULT 1
+)
+```
+
+#### diagrams 表 - 圖表資料
+```sql
+CREATE TABLE diagrams (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  databaseType TEXT,  -- mysql, postgresql, sqlite 等
+  tables TEXT,  -- JSON 格式的表格資料
+  relationships TEXT,  -- JSON 格式的關聯資料
+  notes TEXT,  -- JSON 格式的註解
+  areas TEXT,  -- JSON 格式的區域資料
+  enums TEXT DEFAULT '[]',  -- JSON 格式的列舉
+  types TEXT DEFAULT '[]',  -- JSON 格式的自定義類型
+  pan TEXT,  -- 畫布位置
+  zoom REAL,  -- 縮放比例
+  lastModified DATETIME DEFAULT CURRENT_TIMESTAMP,
+  userId INTEGER,
+  is_collaborative INTEGER DEFAULT 0,  -- 是否為協作圖表
+  promoted_by INTEGER,  -- 推廣者 ID
+  promoted_at DATETIME,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES users(id),
+  FOREIGN KEY (promoted_by) REFERENCES users(id)
+)
+```
+
+#### diagram_permissions 表 - 圖表權限管理
+```sql
+CREATE TABLE diagram_permissions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  diagram_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  permission_type TEXT NOT NULL CHECK (permission_type IN ('owner', 'editor', 'viewer')),
+  granted_by INTEGER NOT NULL,
+  granted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (diagram_id) REFERENCES diagrams(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (granted_by) REFERENCES users(id),
+  UNIQUE(diagram_id, user_id)
+)
+```
+
+#### revision_history 表 - 修訂歷史
+```sql
+CREATE TABLE revision_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  diagramId INTEGER NOT NULL,
+  userId INTEGER NOT NULL,
+  username TEXT NOT NULL,
+  action TEXT NOT NULL,  -- CREATE, EDIT, DELETE 等
+  element TEXT NOT NULL,  -- TABLE, RELATIONSHIP, NOTE 等
+  message TEXT NOT NULL,  -- 修訂訊息
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (diagramId) REFERENCES diagrams(id) ON DELETE CASCADE,
+  FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+)
+```
+
+#### user_sessions 表 - 使用者會話管理
+```sql
+CREATE TABLE user_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER NOT NULL,
+  token TEXT UNIQUE NOT NULL,  -- JWT token
+  expiresAt DATETIME NOT NULL,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+)
+```
+
+#### templates 表 - 範本管理
+```sql
+CREATE TABLE templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  databaseType TEXT,
+  tables TEXT,  -- JSON 格式
+  relationships TEXT,  -- JSON 格式
+  notes TEXT,  -- JSON 格式
+  subjectAreas TEXT,  -- JSON 格式
+  pan TEXT,
+  zoom REAL,
+  custom INTEGER DEFAULT 1
+)
+```
+
+#### collaboration_history 表 - 協作歷史
+```sql
+CREATE TABLE collaboration_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  diagram_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  action TEXT NOT NULL,
+  target_type TEXT,
+  target_id TEXT,
+  changes TEXT,  -- JSON 格式的變更詳情
+  details TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (diagram_id) REFERENCES diagrams(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+)
 ```
 
 ## 重要實作細節

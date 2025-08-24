@@ -101,6 +101,9 @@ const initDb = (callback = () => {}) => {
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'editor', 'user')),
+      display_name TEXT,
+      auth_source TEXT DEFAULT 'LocalDB' CHECK (auth_source IN ('LocalDB', 'SSO', 'LDAP')),
+      sso_id TEXT,
       must_change_password INTEGER DEFAULT 0,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       lastLogin DATETIME,
@@ -124,8 +127,8 @@ const initDb = (callback = () => {}) => {
             if (err) {
               console.error("Error hashing default password:", err.message);
             } else {
-              db.run(`INSERT INTO users (username, email, password, role, must_change_password) VALUES (?, ?, ?, ?, ?)`,
-                ['admin', 'admin@mitdb.local', hashedPassword, 'admin', 1], (err) => {
+              db.run(`INSERT INTO users (username, email, password, role, display_name, auth_source, must_change_password) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                ['admin', 'admin@mitdb.local', hashedPassword, 'admin', 'Administrator', 'LocalDB', 1], (err) => {
                   if (err) {
                     console.error("Error creating default admin user:", err.message);
                   } else {

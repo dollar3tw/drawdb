@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Action, ObjectType } from "../../../data/constants";
 import { Input, Button, Popover, Select, TextArea } from "@douyinfe/semi-ui";
 import { IconMore, IconKeyStroked } from "@douyinfe/semi-icons";
@@ -22,7 +22,13 @@ export default function TableField({ data, tid, index }) {
     timestamp: new Date().toISOString()
   });
   const [editField, setEditField] = useState({});
+  const [tempComment, setTempComment] = useState(data.comment || "");
   const table = useMemo(() => tables.find((t) => t.id === tid), [tables, tid]);
+
+  // 同步 data.comment 的變化
+  useEffect(() => {
+    setTempComment(data.comment || "");
+  }, [data.comment]);
 
   return (
     <div className="hover-1 my-2">
@@ -222,14 +228,20 @@ export default function TableField({ data, tid, index }) {
         <div className="flex-1">
           <TextArea
             placeholder={t("comment")}
-            value={data.comment || ""}
+            value={tempComment}
             autosize
             rows={1}
             className="text-sm"
-            onChange={(value) => updateField(tid, data.id, { comment: value })}
-            onFocus={(e) => setEditField({ comment: e.target.value })}
+            onChange={(value) => setTempComment(value)}
+            onFocus={() => setEditField({ comment: data.comment || "" })}
             onBlur={(e) => {
-              if (e.target.value === editField.comment) return;
+              const newValue = e.target.value;
+              if (newValue === data.comment) return;
+              
+              // 只在失焦時更新實際的欄位資料
+              updateField(tid, data.id, { comment: newValue });
+              
+              // 記錄修訂歷史
               setUndoStack((prev) => [
                 ...prev,
                 createUndoItem({
@@ -239,7 +251,7 @@ export default function TableField({ data, tid, index }) {
                   tid: tid,
                   fid: data.id,
                   undo: editField,
-                  redo: { comment: e.target.value },
+                  redo: { comment: newValue },
                   message: t("edit_table", {
                     tableName: table.name,
                     extra: "[field comment]",
