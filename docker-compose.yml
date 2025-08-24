@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  drawdb:
+  mitdb:
     build:
       context: .
       dockerfile: Dockerfile
-    image: drawdb:latest
-    container_name: drawdb
+    image: mitdb:latest
+    container_name: mitdb
     restart: unless-stopped
     ports:
       - "3001:3001"
@@ -28,7 +28,7 @@ services:
       - STATE_SECRET=${STATE_SECRET:-}
       - SSO_SCOPE=${SSO_SCOPE:-openid profile email}
     networks:
-      - drawdb-network
+      - mitdb-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
@@ -37,10 +37,10 @@ services:
       start_period: 40s
 
 networks:
-  drawdb-network:
+  mitdb-network:
     driver: bridge
 
 # 如果使用綁定掛載（上面的路徑映射），則不需要定義 volumes
 # volumes:
-#   drawdb-data:
+#   mitdb-data:
 #     driver: local

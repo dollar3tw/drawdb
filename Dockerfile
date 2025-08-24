@@ -59,7 +59,7 @@ RUN mkdir -p /app/data && \
 USER nodejs
 
 # 設置資料庫路徑到 data 目錄
-ENV DATABASE_PATH=/app/data/drawdb.sqlite
+ENV DATABASE_PATH=/app/data/mitdb.sqlite
 
 # 暴露端口
 EXPOSE 3001

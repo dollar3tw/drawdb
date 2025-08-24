@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // 支援環境變數設定資料庫路徑（Docker 部署用）
-const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '..', 'drawdb.sqlite'); // Use absolute path
+const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '..', 'mitdb.sqlite'); // Use absolute path
 
 // Ensure the directory exists and has proper permissions
 const dbDir = path.dirname(DB_PATH);

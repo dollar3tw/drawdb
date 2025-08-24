@@ -45,6 +45,7 @@ build
 *.sqlite-shm
 *.sqlite-wal
 *.db
+mitdb.sqlite*
 drawdb.sqlite*
 database/*.sqlite*
 data
